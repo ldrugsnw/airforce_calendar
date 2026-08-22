@@ -75,9 +75,16 @@ function HomeScheduleCard({ eyebrow, schedule }: HomeScheduleCardProps) {
   return (
     <section className="rounded-3xl bg-slate-950 p-6 text-white shadow-sm">
       <p className="text-sm font-semibold text-blue-200">{eyebrow}</p>
-      <h2 className="mt-3 text-2xl font-bold tracking-tight">
-        {formatCalendarDate(schedule.startDate)} ~{' '}
-        {formatCalendarDate(schedule.endDate)}
+      <h2
+        aria-label={`${formatCalendarDate(schedule.startDate)} ~ ${formatCalendarDate(schedule.endDate)}`}
+        className="mt-3 flex flex-wrap items-baseline gap-x-2 text-2xl font-bold tracking-tight"
+      >
+        <span className="whitespace-nowrap">
+          {formatCalendarDate(schedule.startDate)}{' '}
+        </span>
+        <span className="whitespace-nowrap">
+          ~ {formatCalendarDate(schedule.endDate)}
+        </span>
       </h2>
       <p className="mt-2 text-sm text-slate-300">총 {schedule.totalDays}일</p>
       <p className="mt-4 rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold leading-6">

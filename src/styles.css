@@ -85,3 +85,263 @@ a {
   min-height: 0;
   padding-block: 0;
 }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    color: #e2e8f0;
+    background: #020617;
+    --dark-canvas: #020617;
+    --dark-surface: #0f172a;
+    --dark-surface-muted: #1e293b;
+    --dark-border: #334155;
+    --dark-border-subtle: #1e293b;
+    --dark-text: #f8fafc;
+    --dark-text-body: #e2e8f0;
+    --dark-text-muted: #94a3b8;
+    --dark-focus: #60a5fa;
+  }
+
+  body {
+    background: var(--dark-canvas);
+  }
+
+  :focus-visible {
+    outline-color: var(--dark-focus);
+  }
+
+  .bg-white {
+    background-color: var(--dark-surface);
+  }
+
+  .bg-white\/80 {
+    background-color: rgb(15 23 42 / 0.8);
+  }
+
+  .bg-slate-50 {
+    background-color: var(--dark-canvas);
+  }
+
+  .bg-slate-50\/60,
+  .bg-slate-100 {
+    background-color: var(--dark-surface-muted);
+  }
+
+  .bg-slate-200 {
+    background-color: var(--dark-border);
+  }
+
+  .text-slate-950,
+  .text-slate-900,
+  .text-slate-800 {
+    color: var(--dark-text);
+  }
+
+  .text-slate-700,
+  .text-slate-600 {
+    color: var(--dark-text-body);
+  }
+
+  .text-slate-500,
+  .text-slate-400 {
+    color: var(--dark-text-muted);
+  }
+
+  .border-slate-100,
+  .border-slate-200 {
+    border-color: var(--dark-border-subtle);
+  }
+
+  .border-slate-300 {
+    border-color: var(--dark-border);
+  }
+
+  .ring-slate-200 {
+    --tw-ring-color: var(--dark-border);
+  }
+
+  .border-black\/5 {
+    border-color: rgb(255 255 255 / 0.08);
+  }
+
+  .ring-white {
+    --tw-ring-color: var(--dark-surface);
+  }
+
+  input,
+  select,
+  textarea {
+    color-scheme: dark;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--dark-text-muted);
+  }
+
+  .bottom-navigation::after {
+    background: var(--dark-surface);
+  }
+
+  .bg-brand-50,
+  .bg-brand-100 {
+    background-color: #172554;
+  }
+
+  .text-brand-600,
+  .text-brand-700 {
+    color: #93c5fd;
+  }
+
+  .ring-brand-100,
+  .ring-brand-200 {
+    --tw-ring-color: #1e40af;
+  }
+
+  .focus\:ring-brand-100:focus {
+    --tw-ring-color: #1e40af;
+  }
+
+  .bg-blue-50,
+  .bg-blue-50\/40,
+  .bg-blue-100 {
+    background-color: #172554;
+  }
+
+  .text-blue-700,
+  .text-blue-950 {
+    color: #bfdbfe;
+  }
+
+  .border-blue-100,
+  .border-blue-300 {
+    border-color: #1d4ed8;
+  }
+
+  .bg-red-50,
+  .bg-red-50\/40,
+  .bg-red-100 {
+    background-color: #450a0a;
+  }
+
+  .text-red-600,
+  .text-red-700 {
+    color: #fca5a5;
+  }
+
+  .border-red-100,
+  .border-red-200,
+  .border-red-300 {
+    border-color: #991b1b;
+  }
+
+  .focus\:ring-red-100:focus {
+    --tw-ring-color: #991b1b;
+  }
+
+  .bg-amber-50,
+  .bg-amber-50\/40,
+  .bg-amber-100 {
+    background-color: #451a03;
+  }
+
+  .text-amber-700,
+  .text-amber-950 {
+    color: #fde68a;
+  }
+
+  .border-amber-100,
+  .border-amber-300 {
+    border-color: #b45309;
+  }
+
+  .bg-violet-50,
+  .bg-violet-50\/40,
+  .bg-violet-100 {
+    background-color: #2e1065;
+  }
+
+  .text-violet-700,
+  .text-violet-950 {
+    color: #ddd6fe;
+  }
+
+  .border-violet-100,
+  .border-violet-300 {
+    border-color: #6d28d9;
+  }
+
+  .bg-green-50,
+  .bg-green-50\/40,
+  .bg-green-100 {
+    background-color: #052e16;
+  }
+
+  .text-green-700,
+  .text-green-950 {
+    color: #bbf7d0;
+  }
+
+  .border-green-100,
+  .border-green-300 {
+    border-color: #15803d;
+  }
+
+  .bg-orange-50,
+  .bg-orange-100 {
+    background-color: #431407;
+  }
+
+  .text-orange-700 {
+    color: #fdba74;
+  }
+
+  .border-orange-200 {
+    border-color: #c2410c;
+  }
+
+  .focus\:ring-orange-100:focus {
+    --tw-ring-color: #9a3412;
+  }
+
+  .hover\:bg-slate-50:hover,
+  .hover\:bg-slate-100:hover,
+  .active\:bg-slate-200:active,
+  .group:hover .group-hover\:bg-brand-50 {
+    background-color: var(--dark-surface-muted);
+  }
+
+  .hover\:bg-blue-50:hover {
+    background-color: #172554;
+  }
+
+  .hover\:bg-red-50:hover,
+  .enabled\:hover\:bg-red-50:enabled:hover {
+    background-color: #450a0a;
+  }
+
+  .disabled\:border-slate-200:disabled {
+    border-color: var(--dark-border-subtle);
+  }
+
+  .disabled\:bg-slate-100:disabled {
+    background-color: var(--dark-surface-muted);
+  }
+
+  .disabled\:text-slate-400:disabled {
+    color: #64748b;
+  }
+
+  .bg-slate-950 .bg-white {
+    background-color: #f8fafc;
+  }
+
+  .bg-slate-950 .bg-white.text-slate-950,
+  .bg-slate-950 .bg-white .text-slate-950 {
+    color: #0f172a;
+  }
+
+  button:disabled {
+    opacity: 0.65;
+  }
+}

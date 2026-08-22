@@ -13,10 +13,10 @@ describe('월간 달력', () => {
       </MemoryRouter>,
     )
 
-    const calendarDescription = screen.getByText(/빈 날짜를 한 번 누르면 외출을/)
+    const calendarDescription = screen.getByText(/빈 날짜 한 번은 외출/)
     expect(calendarDescription).toHaveClass('whitespace-pre-line')
     expect(calendarDescription).toHaveTextContent(
-      '빈 날짜를 한 번 누르면 외출을, 두 번 누르면 휴가 기간을 등록할 수 있어요. 등록한 일정은 달력에서 색상과 표시로 구분됩니다.',
+      '빈 날짜 한 번은 외출, 두 번은 휴가 기간을 선택해요. 등록한 일정은 색상과 표시로 구분됩니다.',
     )
 
     const currentMonth = screen.getByRole('heading', { level: 2 }).textContent

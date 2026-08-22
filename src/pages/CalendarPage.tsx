@@ -374,7 +374,7 @@ export function CalendarPage() {
   return (
     <div onClick={dismissSelectedSchedule}>
       <PageHeader
-        description={'빈 날짜를 한 번 누르면 외출을, 두 번 누르면 휴가 기간을 등록할 수 있어요.\n등록한 일정은 달력에서 색상과 표시로 구분됩니다.'}
+        description={'빈 날짜 한 번은 외출, 두 번은 휴가 기간을 선택해요.\n등록한 일정은 색상과 표시로 구분됩니다.'}
         title="달력"
       />
       <section
@@ -592,11 +592,16 @@ export function CalendarPage() {
               >
                 <p className="text-xs font-semibold text-blue-200">연결된 전체 일정</p>
                 <h3
-                  className="mt-2 text-base font-bold"
+                  aria-label={`${formatCalendarDate(selectedContinuousSchedule.startDate)} ~ ${formatCalendarDate(selectedContinuousSchedule.endDate)}`}
+                  className="mt-2 flex flex-wrap items-baseline gap-x-1.5 text-base font-bold"
                   id="continuous-schedule-title"
                 >
-                  {formatCalendarDate(selectedContinuousSchedule.startDate)} ~{' '}
-                  {formatCalendarDate(selectedContinuousSchedule.endDate)}
+                  <span className="whitespace-nowrap">
+                    {formatCalendarDate(selectedContinuousSchedule.startDate)}{' '}
+                  </span>
+                  <span className="whitespace-nowrap">
+                    ~ {formatCalendarDate(selectedContinuousSchedule.endDate)}
+                  </span>
                 </h3>
                 <p className="mt-1 text-sm text-slate-300">
                   총 {selectedContinuousSchedule.totalDays}일 ·{' '}
@@ -659,11 +664,15 @@ export function CalendarPage() {
               </strong>
             </div>
             <dl className="mt-4 space-y-3 border-t border-slate-100 pt-4 text-sm">
-              <div className="flex justify-between gap-4">
+              <div className="grid gap-1 sm:flex sm:justify-between sm:gap-4">
                 <dt className="text-slate-500">사용 기간</dt>
-                <dd className="text-right font-medium text-slate-900">
-                  {formatCalendarDate(selectedLeaveUsage.startDate)} ~{' '}
-                  {formatCalendarDate(selectedLeaveUsage.endDate)}
+                <dd className="flex flex-wrap items-baseline gap-x-1.5 font-medium text-slate-900 sm:justify-end sm:text-right">
+                  <span className="whitespace-nowrap">
+                    {formatCalendarDate(selectedLeaveUsage.startDate)}{' '}
+                  </span>
+                  <span className="whitespace-nowrap">
+                    ~ {formatCalendarDate(selectedLeaveUsage.endDate)}
+                  </span>
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
@@ -889,8 +898,13 @@ export function CalendarPage() {
         )}
         {!editingLeaveUsageId && startDate && endDate && (
           <div className="mt-2">
-            <p className="font-semibold text-slate-900">
-              {formatCalendarDate(startDate)} ~ {formatCalendarDate(endDate)}
+            <p className="flex flex-wrap items-baseline gap-x-1.5 font-semibold text-slate-900">
+              <span className="whitespace-nowrap">
+                {formatCalendarDate(startDate)}{' '}
+              </span>
+              <span className="whitespace-nowrap">
+                ~ {formatCalendarDate(endDate)}
+              </span>
             </p>
             <p className="mt-1 text-sm text-slate-500">
               주말과 공휴일을 포함해 총{' '}
