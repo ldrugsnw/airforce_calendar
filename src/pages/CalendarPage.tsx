@@ -154,7 +154,7 @@ export function CalendarPage() {
     setFormMessage(null)
   }
 
-  function saveOuting() {
+  async function saveOuting() {
     if (!startDate) return
 
     const validation = validateOuting(
@@ -180,10 +180,14 @@ export function CalendarPage() {
       updatedAt: now,
     }
 
-    dispatch({
+    const result = await dispatch({
       type: editingOuting ? 'outing/updated' : 'outing/added',
       payload: outing,
     })
+    if (!result.ok) {
+      setFormMessage({ type: 'error', text: result.message })
+      return
+    }
     setSelectedOutingId(editingOuting?.id ?? null)
     setEditingOutingId(null)
     setStartDate(null)
@@ -224,15 +228,19 @@ export function CalendarPage() {
     setFormMessage(null)
   }
 
-  function cancelSelectedOuting() {
+  async function cancelSelectedOuting() {
     if (!selectedOuting) return
 
     if (!window.confirm('이 외출 일정을 취소할까요?')) return
 
-    dispatch({
+    const result = await dispatch({
       type: 'outing/canceled',
       payload: { id: selectedOuting.id, canceledAt: new Date().toISOString() },
     })
+    if (!result.ok) {
+      setFormMessage({ type: 'error', text: result.message })
+      return
+    }
     setSelectedOutingId(null)
     setFormMessage({ type: 'success', text: '외출 일정이 취소되었습니다.' })
   }
@@ -243,7 +251,7 @@ export function CalendarPage() {
     )
   }
 
-  function saveLeaveUsage() {
+  async function saveLeaveUsage() {
     if (!startDate || !endDate) {
       setFormMessage({
         type: 'error',
@@ -285,10 +293,14 @@ export function CalendarPage() {
       updatedAt: now,
     }
 
-    dispatch({
+    const result = await dispatch({
       type: editingLeaveUsage ? 'leaveUsage/updated' : 'leaveUsage/added',
       payload: leaveUsage,
     })
+    if (!result.ok) {
+      setFormMessage({ type: 'error', text: result.message })
+      return
+    }
     setSelectedLeaveUsageId(null)
     setSearchParams({}, { replace: true })
     setEditingLeaveUsageId(null)
@@ -335,7 +347,7 @@ export function CalendarPage() {
     setFormMessage(null)
   }
 
-  function cancelSelectedLeaveUsage() {
+  async function cancelSelectedLeaveUsage() {
     if (!selectedLeaveUsage) return
 
     const shouldCancel = window.confirm(
@@ -344,10 +356,14 @@ export function CalendarPage() {
 
     if (!shouldCancel) return
 
-    dispatch({
+    const result = await dispatch({
       type: 'leaveUsage/canceled',
       payload: { id: selectedLeaveUsage.id, canceledAt: new Date().toISOString() },
     })
+    if (!result.ok) {
+      setFormMessage({ type: 'error', text: result.message })
+      return
+    }
     setSelectedLeaveUsageId(null)
     setSearchParams({}, { replace: true })
     setFormMessage({ type: 'success', text: '휴가 사용 일정이 취소되었습니다.' })

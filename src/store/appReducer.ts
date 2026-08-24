@@ -45,6 +45,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         leaveGrants: state.leaveGrants.filter(
           (leaveGrant) => leaveGrant.id !== action.payload.id,
         ),
+        leaveUsages: state.leaveUsages.filter(
+          (leaveUsage) => leaveUsage.leaveGrantId !== action.payload.id,
+        ),
       }
     case 'leaveUsage/added':
       return {

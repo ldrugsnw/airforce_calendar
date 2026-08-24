@@ -36,12 +36,19 @@ describe('appReducer', () => {
   })
 
   it('같은 id의 보유 휴가만 삭제한다', () => {
+    const canceledUsage = {
+      id: 'usage-1', leaveGrantId: leaveGrant.id,
+      startDate: '2026-08-08' as const, endDate: '2026-08-08' as const,
+      canceled: true, canceledAt: '2026-08-02T00:00:00.000Z',
+      createdAt: '2026-08-01T00:00:00.000Z', updatedAt: '2026-08-02T00:00:00.000Z',
+    }
     const nextState = appReducer(
-      { leaveGrants: [leaveGrant], leaveUsages: [], outings: [] },
+      { leaveGrants: [leaveGrant], leaveUsages: [canceledUsage], outings: [] },
       { type: 'leaveGrant/deleted', payload: { id: leaveGrant.id } },
     )
 
     expect(nextState.leaveGrants).toEqual([])
+    expect(nextState.leaveUsages).toEqual([])
   })
 
   it('휴가 사용 기록을 기존 목록 뒤에 추가한다', () => {

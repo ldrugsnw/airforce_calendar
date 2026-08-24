@@ -9,6 +9,7 @@ export type Outing = {
   canceledAt: string | null
   createdAt: string
   updatedAt: string
+  revision?: number
 }
 
 export type OutingValidation =

@@ -12,7 +12,7 @@ export type LeaveGrantFormValues = {
 type LeaveGrantFormProps = {
   initialValues?: LeaveGrantFormValues
   onCancel: () => void
-  onSubmit: (values: LeaveGrantFormValues) => void
+  onSubmit: (values: LeaveGrantFormValues) => void | Promise<string | null>
   submitLabel: string
   validate?: (values: LeaveGrantFormValues) => string | null
 }
@@ -39,7 +39,7 @@ export function LeaveGrantForm({
   const [submitError, setSubmitError] = useState<string | null>(null)
   const values = initialValues ?? emptyValues
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     const formData = new FormData(event.currentTarget)
@@ -80,7 +80,8 @@ export function LeaveGrantForm({
       return
     }
 
-    onSubmit(submittedValues)
+    const serverMessage = await onSubmit(submittedValues)
+    if (serverMessage) setSubmitError(serverMessage)
   }
 
   function handleCancel() {

@@ -49,6 +49,16 @@ const navigationItems: NavigationItem[] = [
       </>
     ),
   },
+  {
+    label: '계정',
+    path: '/account',
+    icon: (
+      <>
+        <circle cx="12" cy="8" r="3" />
+        <path strokeLinecap="round" d="M6.5 20a5.5 5.5 0 0 1 11 0" />
+      </>
+    ),
+  },
 ]
 
 export function BottomNavigation() {
@@ -57,7 +67,7 @@ export function BottomNavigation() {
       aria-label="주요 화면"
       className="bottom-navigation fixed inset-x-0 bottom-0 z-10 mx-auto w-full max-w-lg border-t border-slate-200 bg-white px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_12px_rgba(15,23,42,0.04)]"
     >
-      <ul className="grid grid-cols-3 gap-2">
+      <ul className="grid grid-cols-4 gap-2">
         {navigationItems.map((item) => (
           <li key={item.path}>
             <NavLink

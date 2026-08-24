@@ -1,8 +1,10 @@
-import { createContext, useContext, type Dispatch } from 'react'
+import { createContext, useContext } from 'react'
 import type { AppAction, AppState } from './appReducer'
+import type { MutationResult } from '../server/appSnapshot'
 
 export const AppStateContext = createContext<AppState | null>(null)
-export const AppDispatchContext = createContext<Dispatch<AppAction> | null>(null)
+export type AppDispatch = (action: AppAction) => Promise<MutationResult>
+export const AppDispatchContext = createContext<AppDispatch | null>(null)
 
 export function useAppState() {
   const state = useContext(AppStateContext)

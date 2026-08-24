@@ -1,9 +1,16 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { App } from '../app/App'
 import type { LeaveGrant } from '../domain/leave'
 import type { LeaveUsage } from '../domain/leaveUsage'
 import { APP_STORAGE_KEY, saveAppState } from '../store/appStorage'
+
+async function clickAndFlush(button: HTMLElement) {
+  await act(async () => {
+    fireEvent.click(button)
+    await Promise.resolve()
+  })
+}
 
 describe('월간 달력', () => {
   it('월을 이동하고 두 날짜를 이른 순서로 선택해 포함 일수를 보여준다', () => {
@@ -58,7 +65,7 @@ describe('월간 달력', () => {
     fireEvent.change(screen.getByLabelText('외출 사유'), {
       target: { value: '개인 용무' },
     })
-    fireEvent.click(screen.getByRole('button', { name: '외출 저장' }))
+    await clickAndFlush(screen.getByRole('button', { name: '외출 저장' }))
 
     expect(screen.getByRole('status')).toHaveTextContent(
       '외출 일정이 저장되었습니다.',
@@ -80,7 +87,7 @@ describe('월간 달력', () => {
     fireEvent.change(screen.getByLabelText('외출 사유'), {
       target: { value: '병원 진료' },
     })
-    fireEvent.click(screen.getByRole('button', { name: '변경사항 저장' }))
+    await clickAndFlush(screen.getByRole('button', { name: '변경사항 저장' }))
 
     expect(screen.getByRole('status')).toHaveTextContent(
       '외출 일정이 수정되었습니다.',
@@ -92,7 +99,7 @@ describe('월간 달력', () => {
     })
 
     vi.spyOn(window, 'confirm').mockReturnValue(true)
-    fireEvent.click(screen.getByRole('button', { name: '외출 취소' }))
+    await clickAndFlush(screen.getByRole('button', { name: '외출 취소' }))
 
     expect(screen.getByRole('status')).toHaveTextContent(
       '외출 일정이 취소되었습니다.',
@@ -148,7 +155,7 @@ describe('월간 달력', () => {
     fireEvent.change(screen.getByLabelText('사용할 보유 휴가'), {
       target: { value: leaveGrant.id },
     })
-    fireEvent.click(screen.getByRole('button', { name: '휴가 일정 저장' }))
+    await clickAndFlush(screen.getByRole('button', { name: '휴가 일정 저장' }))
 
     expect(screen.getByRole('status')).toHaveTextContent('휴가 사용 일정이 저장되었습니다.')
     expect(eighth).toHaveAccessibleName(/연가/)
@@ -203,19 +210,19 @@ describe('월간 달력', () => {
     expect(endInput).toHaveValue(`${yearMonth}10`)
 
     fireEvent.change(endInput, { target: { value: `${yearMonth}07` } })
-    fireEvent.click(screen.getByRole('button', { name: '변경사항 저장' }))
+    await clickAndFlush(screen.getByRole('button', { name: '변경사항 저장' }))
     expect(screen.getByRole('alert')).toHaveTextContent(
       '종료일은 시작일보다 빠를 수 없습니다.',
     )
 
     fireEvent.change(endInput, { target: { value: `${yearMonth}12` } })
     expect(screen.getByText('변경할 휴가 일수').parentElement).toHaveTextContent('5일')
-    fireEvent.click(screen.getByRole('button', { name: '변경사항 저장' }))
+    await clickAndFlush(screen.getByRole('button', { name: '변경사항 저장' }))
     expect(screen.getByRole('status')).toHaveTextContent('휴가 사용 일정이 수정되었습니다.')
 
     fireEvent.click(eighth)
     vi.spyOn(window, 'confirm').mockReturnValue(true)
-    fireEvent.click(screen.getByRole('button', { name: '일정 취소' }))
+    await clickAndFlush(screen.getByRole('button', { name: '일정 취소' }))
 
     expect(screen.getByRole('status')).toHaveTextContent('휴가 사용 일정이 취소되었습니다.')
     expect(eighth).not.toHaveAccessibleName(/연가/)
@@ -231,7 +238,7 @@ describe('월간 달력', () => {
     })
   })
 
-  it('종류별 색상을 유지하면서 인접한 기록의 경계를 연결한다', () => {
+  it('종류별 색상을 유지하면서 인접한 기록의 경계를 연결한다', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-08-05T15:00:00.000Z'))
     const leaveGrants: LeaveGrant[] = [
@@ -271,7 +278,7 @@ describe('월간 달력', () => {
     expect(screen.queryByText('선택한 개별 기록')).not.toBeInTheDocument()
 
     vi.spyOn(window, 'confirm').mockReturnValue(true)
-    fireEvent.click(screen.getByRole('button', { name: '일정 취소' }))
+    await clickAndFlush(screen.getByRole('button', { name: '일정 취소' }))
     fireEvent.click(consolationStart)
 
     expect(screen.getByText('총 2일 · 위로휴가 2일')).toBeInTheDocument()

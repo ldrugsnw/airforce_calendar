@@ -41,7 +41,7 @@ export function LeaveDetailPage() {
     .sort((first, second) => first.startDate.localeCompare(second.startDate))
   const today = getKstToday()
 
-  function handleDelete() {
+  async function handleDelete() {
     if (hasActiveLeaveUsages) return
 
     const confirmed = window.confirm(
@@ -52,10 +52,11 @@ export function LeaveDetailPage() {
       return
     }
 
-    dispatch({
+    const result = await dispatch({
       type: 'leaveGrant/deleted',
       payload: { id: currentLeaveGrant.id },
     })
+    if (!result.ok) return
     navigate('/leave', { replace: true })
   }
 
@@ -165,7 +166,7 @@ export function LeaveDetailPage() {
         <button
           className="min-h-12 rounded-xl border border-red-200 px-4 text-sm font-semibold text-red-600 transition-colors enabled:hover:bg-red-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
           disabled={hasActiveLeaveUsages}
-          onClick={handleDelete}
+          onClick={() => void handleDelete()}
           type="button"
         >
           삭제

@@ -16,6 +16,7 @@ export type LeaveUsage = {
   canceledAt: string | null
   createdAt: string
   updatedAt: string
+  revision?: number
 }
 
 export type LeaveUsageStatus = 'scheduled' | 'inProgress' | 'completed'

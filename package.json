@@ -8,9 +8,14 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:reset": "supabase db reset",
+    "test:db": "supabase test db"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router": "^8.3.0"
@@ -28,6 +33,7 @@
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.9.0",
     "jsdom": "^29.1.1",
+    "supabase": "^2.115.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.65.0",

@@ -10,7 +10,7 @@ import { useAppDispatch } from '../store/appStateContext'
 export function LeaveCreatePage() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
-  function handleSubmit(values: LeaveGrantFormValues) {
+  async function handleSubmit(values: LeaveGrantFormValues) {
     const now = new Date().toISOString()
     const leaveGrant: LeaveGrant = {
       id: crypto.randomUUID(),
@@ -19,8 +19,10 @@ export function LeaveCreatePage() {
       updatedAt: now,
     }
 
-    dispatch({ type: 'leaveGrant/added', payload: leaveGrant })
+    const result = await dispatch({ type: 'leaveGrant/added', payload: leaveGrant })
+    if (!result.ok) return result.message
     navigate('/leave', { replace: true })
+    return null
   }
 
   return (

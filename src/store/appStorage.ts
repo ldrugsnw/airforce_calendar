@@ -6,7 +6,7 @@ import { initialAppState, type AppState } from './appReducer'
 
 export const APP_STORAGE_KEY = 'airforce-calendar:data'
 
-type StoredAppData = {
+export type StoredAppData = {
   version: 3
   leaveGrants: LeaveGrant[]
   leaveUsages: LeaveUsage[]
@@ -150,4 +150,26 @@ export function saveAppState(state: AppState) {
   }
 
   localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(storedData))
+}
+
+export function getLocalDataForMigration(): StoredAppData | null {
+  try {
+    const raw = JSON.parse(localStorage.getItem(APP_STORAGE_KEY) ?? 'null') as
+      | ParsedStoredAppData
+      | null
+    if (raw?.version !== 3) return null
+    const state = loadAppState()
+    if (
+      state.leaveGrants.length === 0 &&
+      state.leaveUsages.length === 0 &&
+      state.outings.length === 0
+    ) return null
+    return { version: 3, ...state }
+  } catch {
+    return null
+  }
+}
+
+export function clearLocalAppData() {
+  localStorage.removeItem(APP_STORAGE_KEY)
 }

@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router'
 import { BottomNavigation } from '../components/BottomNavigation'
+import { RuntimeNotice } from '../components/RuntimeNotice'
 
 export function AppLayout() {
   return (
@@ -12,6 +13,7 @@ export function AppLayout() {
           본문으로 바로가기
         </a>
         <main className="min-h-dvh px-5 pb-28 pt-8" id="main-content" tabIndex={-1}>
+          <RuntimeNotice />
           <Outlet />
         </main>
         <BottomNavigation />

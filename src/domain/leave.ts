@@ -19,6 +19,7 @@ export type LeaveGrant = {
   memo: string
   createdAt: string
   updatedAt: string
+  revision?: number
 }
 
 export function getLeaveTypeLabel(type: LeaveType) {

@@ -20,8 +20,8 @@ export function LeaveEditPage() {
 
   const currentLeaveGrant = leaveGrant
 
-  function handleSubmit(values: LeaveGrantFormValues) {
-    dispatch({
+  async function handleSubmit(values: LeaveGrantFormValues) {
+    const result = await dispatch({
       type: 'leaveGrant/updated',
       payload: {
         ...currentLeaveGrant,
@@ -29,7 +29,9 @@ export function LeaveEditPage() {
         updatedAt: new Date().toISOString(),
       },
     })
+    if (!result.ok) return result.message
     navigate(`/leave/${currentLeaveGrant.id}`, { replace: true })
+    return null
   }
 
   return (
