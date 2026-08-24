@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { CalendarGrid } from '../components/CalendarGrid'
+import { CalendarLegend } from '../components/CalendarLegend'
 import { CalendarMonthHeader } from '../components/CalendarMonthHeader'
 import { PageHeader } from '../components/PageHeader'
 import {
@@ -76,6 +77,19 @@ export function CalendarPage() {
         visibleMonthStart <= usage.endDate,
     ),
   )
+  const hasVisibleMonthOuting = outings.some(
+    (outing) =>
+      !outing.canceled &&
+      visibleMonthStart !== undefined &&
+      visibleMonthEnd !== undefined &&
+      visibleMonthStart <= outing.date &&
+      outing.date <= visibleMonthEnd,
+  )
+  const legendItems = visibleMonthLegendGrants.map((grant) => ({
+    id: grant.id,
+    label: `${getLeaveTypeLabel(grant.type)} · ${grant.reason || '사유 없음'}`,
+    colorClassName: LEAVE_TYPE_STYLES[grant.type].split(' ')[0],
+  }))
   const continuousSchedules = useMemo(
     () => createContinuousLeaveSchedules(leaveUsages, leaveGrants),
     [leaveGrants, leaveUsages],
@@ -454,39 +468,7 @@ export function CalendarPage() {
           onSelectDate={selectDate}
         />
 
-        {(visibleMonthLegendGrants.length > 0 ||
-          outings.some(
-            (outing) =>
-              !outing.canceled &&
-              visibleMonthStart !== undefined &&
-              visibleMonthEnd !== undefined &&
-              visibleMonthStart <= outing.date &&
-              outing.date <= visibleMonthEnd,
-          )) && (
-          <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-            {visibleMonthLegendGrants.map((grant) => (
-              <span className="inline-flex max-w-full items-start gap-1.5 text-xs text-slate-600" key={grant.id}>
-                <span className={`mt-0.5 size-3 shrink-0 rounded-full ${LEAVE_TYPE_STYLES[grant.type].split(' ')[0]}`} />
-                <span className="min-w-0 break-words">
-                  {getLeaveTypeLabel(grant.type)} · {grant.reason || '사유 없음'}
-                </span>
-              </span>
-            ))}
-            {outings.some(
-              (outing) =>
-                !outing.canceled &&
-                visibleMonthStart !== undefined &&
-                visibleMonthEnd !== undefined &&
-                visibleMonthStart <= outing.date &&
-                outing.date <= visibleMonthEnd,
-            ) && (
-              <span className="inline-flex max-w-full items-start gap-1.5 text-xs text-slate-600">
-                <span className="mt-0.5 size-3 shrink-0 rounded-full bg-orange-500" />
-                <span className="min-w-0 break-words">외출</span>
-              </span>
-            )}
-          </div>
-        )}
+        <CalendarLegend hasOuting={hasVisibleMonthOuting} items={legendItems} />
       </section>
 
       <section
