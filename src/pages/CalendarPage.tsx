@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router'
 import { CalendarGrid } from '../components/CalendarGrid'
 import { CalendarLegend } from '../components/CalendarLegend'
 import { CalendarMonthHeader } from '../components/CalendarMonthHeader'
+import { OutingDetailCard } from '../components/OutingDetailCard'
+import { OutingFormPanel } from '../components/OutingFormPanel'
 import { PageHeader } from '../components/PageHeader'
 import {
   addCalendarDays,
@@ -248,6 +250,12 @@ export function CalendarPage() {
     setFormMessage(null)
   }
 
+  function closeOutingForm() {
+    setIsOutingFormOpen(false)
+    setOutingReason('')
+    setFormMessage(null)
+  }
+
   function cancelSelectedOuting() {
     if (!selectedOuting) return
 
@@ -488,41 +496,12 @@ export function CalendarPage() {
               : '선택한 휴가 기간'}
         </p>
         {selectedOuting && (
-          <div className="mt-3 rounded-2xl border border-orange-200 bg-white p-4 shadow-sm">
-            <span className="inline-flex items-center gap-2 rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">
-              <span className="size-2 rounded-full bg-orange-500" />
-              외출
-            </span>
-            <p className="mt-3 font-semibold text-slate-950">
-              {selectedOuting.reason}
-            </p>
-            <p className="mt-2 text-sm text-slate-600">
-              {formatCalendarDate(selectedOuting.date)}
-            </p>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button
-                className="min-h-11 rounded-xl bg-orange-500 px-4 text-sm font-semibold text-white"
-                onClick={editSelectedOuting}
-                type="button"
-              >
-                외출 수정
-              </button>
-              <button
-                className="min-h-11 rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700"
-                onClick={cancelSelectedOuting}
-                type="button"
-              >
-                외출 취소
-              </button>
-            </div>
-            <button
-              className="mt-2 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
-              onClick={() => setSelectedOutingId(null)}
-              type="button"
-            >
-              상세 닫기
-            </button>
-          </div>
+          <OutingDetailCard
+            onCancel={cancelSelectedOuting}
+            onClose={() => setSelectedOutingId(null)}
+            onEdit={editSelectedOuting}
+            outing={selectedOuting}
+          />
         )}
         {selectedLeaveUsage && selectedUsageGrant && (
           <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -756,86 +735,29 @@ export function CalendarPage() {
           </p>
         )}
         {!editingLeaveUsageId && startDate && !endDate && (
-          <div className="mt-2">
-            <p className="font-semibold text-slate-900">{formatCalendarDate(startDate)}</p>
-            {!isOutingFormOpen ? (
-              <>
-                <p className="mt-1 text-sm text-slate-500">
-                  외출을 등록하거나 다른 날짜를 눌러 휴가 기간을 완성하세요.
-                </p>
-                <button
-                  className="mt-4 min-h-12 w-full rounded-2xl bg-orange-500 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-600"
-                  onClick={() => {
-                    setIsOutingFormOpen(true)
-                    setFormMessage(null)
-                  }}
-                  type="button"
-                >
-                  {visibleMonth.month}월 {Number(startDate.slice(-2))}일 외출 등록
-                </button>
-              </>
-            ) : (
-              <div className="mt-4">
-                {editingOutingId && (
-                  <label className="block text-sm font-semibold text-slate-800" htmlFor="outing-date">
-                    외출 날짜
-                    <input
-                      className="calendar-date-input calendar-date-input-centered mt-2 h-14 w-full rounded-2xl border border-slate-300 bg-white px-4 text-base font-normal text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                      id="outing-date"
-                      onChange={(event) => {
-                        if (event.target.value) {
-                          setStartDate(event.target.value as CalendarDate)
-                        }
-                        setFormMessage(null)
-                      }}
-                      type="date"
-                      value={startDate}
-                    />
-                  </label>
-                )}
-                <label className="block text-sm font-semibold text-slate-800" htmlFor="outing-reason">
-                  외출 사유
-                  <input
-                    autoFocus={!editingOutingId}
-                    className={`${editingOutingId ? 'mt-4' : 'mt-2'} h-14 w-full rounded-2xl border border-slate-300 bg-white px-4 text-base font-normal text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100`}
-                    id="outing-reason"
-                    onChange={(event) => {
-                      setOutingReason(event.target.value)
-                      setFormMessage(null)
-                    }}
-                    placeholder="예: 개인 용무"
-                    type="text"
-                    value={outingReason}
-                  />
-                </label>
-                {formMessage?.type === 'error' && (
-                  <p className="mt-2 text-sm font-medium text-red-600" role="alert">
-                    {formMessage.text}
-                  </p>
-                )}
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <button
-                    className="min-h-12 rounded-2xl bg-orange-500 px-4 text-sm font-semibold text-white shadow-sm"
-                    onClick={saveOuting}
-                    type="button"
-                  >
-                    {editingOutingId ? '변경사항 저장' : '외출 저장'}
-                  </button>
-                  <button
-                    className="min-h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
-                    onClick={editingOutingId ? stopEditingOuting : () => {
-                      setIsOutingFormOpen(false)
-                      setOutingReason('')
-                      setFormMessage(null)
-                    }}
-                    type="button"
-                  >
-                    {editingOutingId ? '수정 취소' : '등록 취소'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <OutingFormPanel
+            date={startDate}
+            errorMessage={
+              formMessage?.type === 'error' ? formMessage.text : undefined
+            }
+            isEditing={Boolean(editingOutingId)}
+            isFormOpen={isOutingFormOpen}
+            onCancel={editingOutingId ? stopEditingOuting : closeOutingForm}
+            onDateChange={(date) => {
+              setStartDate(date)
+              setFormMessage(null)
+            }}
+            onOpen={() => {
+              setIsOutingFormOpen(true)
+              setFormMessage(null)
+            }}
+            onReasonChange={(reason) => {
+              setOutingReason(reason)
+              setFormMessage(null)
+            }}
+            onSave={saveOuting}
+            reason={outingReason}
+          />
         )}
         {!editingLeaveUsageId && startDate && endDate && (
           <div className="mt-2">
