@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
+import { CalendarMonthHeader } from '../components/CalendarMonthHeader'
 import { PageHeader } from '../components/PageHeader'
 import {
   addCalendarDays,
@@ -381,27 +382,15 @@ export function CalendarPage() {
         className="mt-8 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-3">
-          <button
-            aria-label="이전 달"
-            className="flex size-12 items-center justify-center rounded-2xl text-xl text-slate-600 transition hover:bg-slate-100 active:bg-slate-200"
-            onClick={() => setVisibleMonth((month) => moveCalendarMonth(month, -1))}
-            type="button"
-          >
-            ←
-          </button>
-          <h2 className="text-lg font-bold text-slate-950" aria-live="polite">
-            {visibleMonth.year}년 {visibleMonth.month}월
-          </h2>
-          <button
-            aria-label="다음 달"
-            className="flex size-12 items-center justify-center rounded-2xl text-xl text-slate-600 transition hover:bg-slate-100 active:bg-slate-200"
-            onClick={() => setVisibleMonth((month) => moveCalendarMonth(month, 1))}
-            type="button"
-          >
-            →
-          </button>
-        </div>
+        <CalendarMonthHeader
+          onNextMonth={() =>
+            setVisibleMonth((month) => moveCalendarMonth(month, 1))
+          }
+          onPreviousMonth={() =>
+            setVisibleMonth((month) => moveCalendarMonth(month, -1))
+          }
+          visibleMonth={visibleMonth}
+        />
 
         <div className="mt-3 grid grid-cols-7 text-center text-xs font-semibold text-slate-400">
           {WEEKDAYS.map((weekday, index) => (
