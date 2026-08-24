@@ -8,10 +8,13 @@ import { LeaveUsageCreateForm } from '../components/LeaveUsageCreateForm'
 import { LeaveUsageEditForm } from '../components/LeaveUsageEditForm'
 import { OutingDetailCard } from '../components/OutingDetailCard'
 import { OutingFormPanel } from '../components/OutingFormPanel'
-import { LEAVE_TYPE_STYLES } from '../components/calendarStyles'
+import {
+  createCalendarDayItems,
+  createCalendarLegend,
+  createLeaveGrantOptions,
+} from '../components/calendarViewModel'
 import { PageHeader } from '../components/PageHeader'
 import {
-  addCalendarDays,
   createMonthGrid,
   getCalendarMonth,
   getKstToday,
@@ -19,10 +22,8 @@ import {
   orderCalendarRange,
   type CalendarDate,
 } from '../domain/calendarDate'
-import { getLeaveTypeLabel } from '../domain/leave'
 import {
   createContinuousLeaveSchedules,
-  getAvailableDays,
   getContinuousLeaveScheduleForUsage,
   validateLeaveUsage,
   type LeaveUsage,
@@ -54,34 +55,12 @@ export function CalendarPage() {
   const [selectedLeaveGrantId, setSelectedLeaveGrantId] = useState('')
   const [formMessage, setFormMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
   const monthGrid = useMemo(() => createMonthGrid(visibleMonth), [visibleMonth])
-  const visibleMonthStart = monthGrid.find((calendarDay) => calendarDay)?.date
-  const visibleMonthEnd = [...monthGrid]
-    .reverse()
-    .find((calendarDay) => calendarDay)?.date
-  const visibleMonthLegendGrants = leaveGrants.filter((grant) =>
-    leaveUsages.some(
-      (usage) =>
-        !usage.canceled &&
-        usage.leaveGrantId === grant.id &&
-        visibleMonthStart !== undefined &&
-        visibleMonthEnd !== undefined &&
-        usage.startDate <= visibleMonthEnd &&
-        visibleMonthStart <= usage.endDate,
-    ),
+  const legend = createCalendarLegend(
+    monthGrid,
+    leaveGrants,
+    leaveUsages,
+    outings,
   )
-  const hasVisibleMonthOuting = outings.some(
-    (outing) =>
-      !outing.canceled &&
-      visibleMonthStart !== undefined &&
-      visibleMonthEnd !== undefined &&
-      visibleMonthStart <= outing.date &&
-      outing.date <= visibleMonthEnd,
-  )
-  const legendItems = visibleMonthLegendGrants.map((grant) => ({
-    id: grant.id,
-    label: `${getLeaveTypeLabel(grant.type)} · ${grant.reason || '사유 없음'}`,
-    colorClassName: LEAVE_TYPE_STYLES[grant.type].split(' ')[0],
-  }))
   const continuousSchedules = useMemo(
     () => createContinuousLeaveSchedules(leaveUsages, leaveGrants),
     [leaveGrants, leaveUsages],
@@ -89,16 +68,11 @@ export function CalendarPage() {
   const editingLeaveUsage = leaveUsages.find(
     (leaveUsage) => leaveUsage.id === editingLeaveUsageId && !leaveUsage.canceled,
   )
-  const otherLeaveUsages = editingLeaveUsageId
-    ? leaveUsages.filter((leaveUsage) => leaveUsage.id !== editingLeaveUsageId)
-    : leaveUsages
-  const availableLeaveGrants = leaveGrants.filter(
-    (leaveGrant) => getAvailableDays(leaveGrant, otherLeaveUsages) > 0,
+  const availableLeaveGrantOptions = createLeaveGrantOptions(
+    leaveGrants,
+    leaveUsages,
+    editingLeaveUsageId,
   )
-  const availableLeaveGrantOptions = availableLeaveGrants.map((leaveGrant) => ({
-    id: leaveGrant.id,
-    label: `${getLeaveTypeLabel(leaveGrant.type)} · ${leaveGrant.reason || '사유 없음'} · 사용 가능 ${getAvailableDays(leaveGrant, otherLeaveUsages)}일`,
-  }))
   const selectedLeaveUsage = leaveUsages.find(
     (leaveUsage) => leaveUsage.id === selectedLeaveUsageId && !leaveUsage.canceled,
   )
@@ -379,12 +353,6 @@ export function CalendarPage() {
     setFormMessage({ type: 'success', text: '휴가 사용 일정이 취소되었습니다.' })
   }
 
-  function isInSelectedRange(date: CalendarDate) {
-    if (!startDate) return false
-    if (!endDate) return date === startDate
-    return date >= startDate && date <= endDate
-  }
-
   function dismissSelectedSchedule() {
     if (editingLeaveUsageId || editingOutingId || isOutingFormOpen) return
     if (!selectedLeaveUsageId && !selectedOutingId) return
@@ -395,59 +363,15 @@ export function CalendarPage() {
     setFormMessage(null)
   }
 
-  const calendarDays = monthGrid.map((calendarDay, index) => {
-    if (!calendarDay) return null
-
-    const usage = getUsageForDate(calendarDay.date)
-    const outing = outings.find(
-      (item) => !item.canceled && item.date === calendarDay.date,
-    )
-    const leaveGrant = usage
-      ? leaveGrants.find((grant) => grant.id === usage.leaveGrantId)
-      : undefined
-    const usageLabel = leaveGrant ? getLeaveTypeLabel(leaveGrant.type) : ''
-    const schedule = continuousSchedules.find(
-      (item) =>
-        item.startDate <= calendarDay.date && calendarDay.date <= item.endDate,
-    )
-    const isSelected = isInSelectedRange(calendarDay.date)
-    const selectedConnectsPrevious = Boolean(
-      isSelected &&
-        index % 7 !== 0 &&
-        isInSelectedRange(addCalendarDays(calendarDay.date, -1)),
-    )
-    const selectedConnectsNext = Boolean(
-      isSelected &&
-        index % 7 !== 6 &&
-        isInSelectedRange(addCalendarDays(calendarDay.date, 1)),
-    )
-
-    return {
-      connectsPrevious: Boolean(
-        isSelected
-          ? selectedConnectsPrevious
-          : schedule &&
-              index % 7 !== 0 &&
-              schedule.startDate <= addCalendarDays(calendarDay.date, -1),
-      ),
-      connectsNext: Boolean(
-        isSelected
-          ? selectedConnectsNext
-          : schedule &&
-              index % 7 !== 6 &&
-              addCalendarDays(calendarDay.date, 1) <= schedule.endDate,
-      ),
-      date: calendarDay.date,
-      day: calendarDay.day,
-      hasOuting: Boolean(outing),
-      isSelected,
-      isToday: calendarDay.date === today,
-      leaveClassName: leaveGrant
-        ? LEAVE_TYPE_STYLES[leaveGrant.type]
-        : undefined,
-      usageLabel,
-      weekdayIndex: index % 7,
-    }
+  const calendarDays = createCalendarDayItems({
+    monthGrid,
+    today,
+    startDate,
+    endDate,
+    leaveGrants,
+    leaveUsages,
+    outings,
+    schedules: continuousSchedules,
   })
 
   return (
@@ -478,7 +402,7 @@ export function CalendarPage() {
           onSelectDate={selectDate}
         />
 
-        <CalendarLegend hasOuting={hasVisibleMonthOuting} items={legendItems} />
+        <CalendarLegend hasOuting={legend.hasOuting} items={legend.items} />
       </section>
 
       <section
