@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { CalendarDayButton } from '../components/CalendarDayButton'
+import { CalendarGrid } from '../components/CalendarGrid'
 import { CalendarMonthHeader } from '../components/CalendarMonthHeader'
 import { PageHeader } from '../components/PageHeader'
 import {
@@ -26,8 +26,6 @@ import {
 } from '../domain/leaveUsage'
 import { validateOuting, type Outing } from '../domain/outing'
 import { useAppDispatch, useAppState } from '../store/appStateContext'
-
-const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
 const LEAVE_TYPE_STYLES: Record<LeaveType, string> = {
   annual: 'bg-blue-600 text-white',
@@ -373,6 +371,61 @@ export function CalendarPage() {
     setFormMessage(null)
   }
 
+  const calendarDays = monthGrid.map((calendarDay, index) => {
+    if (!calendarDay) return null
+
+    const usage = getUsageForDate(calendarDay.date)
+    const outing = outings.find(
+      (item) => !item.canceled && item.date === calendarDay.date,
+    )
+    const leaveGrant = usage
+      ? leaveGrants.find((grant) => grant.id === usage.leaveGrantId)
+      : undefined
+    const usageLabel = leaveGrant ? getLeaveTypeLabel(leaveGrant.type) : ''
+    const schedule = continuousSchedules.find(
+      (item) =>
+        item.startDate <= calendarDay.date && calendarDay.date <= item.endDate,
+    )
+    const isSelected = isInSelectedRange(calendarDay.date)
+    const selectedConnectsPrevious = Boolean(
+      isSelected &&
+        index % 7 !== 0 &&
+        isInSelectedRange(addCalendarDays(calendarDay.date, -1)),
+    )
+    const selectedConnectsNext = Boolean(
+      isSelected &&
+        index % 7 !== 6 &&
+        isInSelectedRange(addCalendarDays(calendarDay.date, 1)),
+    )
+
+    return {
+      connectsPrevious: Boolean(
+        isSelected
+          ? selectedConnectsPrevious
+          : schedule &&
+              index % 7 !== 0 &&
+              schedule.startDate <= addCalendarDays(calendarDay.date, -1),
+      ),
+      connectsNext: Boolean(
+        isSelected
+          ? selectedConnectsNext
+          : schedule &&
+              index % 7 !== 6 &&
+              addCalendarDays(calendarDay.date, 1) <= schedule.endDate,
+      ),
+      date: calendarDay.date,
+      day: calendarDay.day,
+      hasOuting: Boolean(outing),
+      isSelected,
+      isToday: calendarDay.date === today,
+      leaveClassName: leaveGrant
+        ? LEAVE_TYPE_STYLES[leaveGrant.type]
+        : undefined,
+      usageLabel,
+      weekdayIndex: index % 7,
+    }
+  })
+
   return (
     <div onClick={dismissSelectedSchedule}>
       <PageHeader
@@ -393,83 +446,13 @@ export function CalendarPage() {
           visibleMonth={visibleMonth}
         />
 
-        <div className="mt-3 grid grid-cols-7 text-center text-xs font-semibold text-slate-400">
-          {WEEKDAYS.map((weekday, index) => (
-            <div
-              className={index === 0 ? 'text-red-500' : index === 6 ? 'text-blue-500' : ''}
-              key={weekday}
-            >
-              {weekday}
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-2 grid grid-cols-7 gap-y-1">
-          {monthGrid.map((calendarDay, index) => {
-            if (!calendarDay) {
-              return <div aria-hidden="true" className="size-10" key={`empty-${index}`} />
-            }
-
-            const usage = getUsageForDate(calendarDay.date)
-            const outing = outings.find(
-              (item) => !item.canceled && item.date === calendarDay.date,
-            )
-            const leaveGrant = usage
-              ? leaveGrants.find((grant) => grant.id === usage.leaveGrantId)
-              : undefined
-            const usageLabel = leaveGrant ? getLeaveTypeLabel(leaveGrant.type) : ''
-            const schedule = continuousSchedules.find(
-              (item) => item.startDate <= calendarDay.date && calendarDay.date <= item.endDate,
-            )
-            const isSelected = isInSelectedRange(calendarDay.date)
-            const selectedConnectsPrevious = Boolean(
-              isSelected &&
-              index % 7 !== 0 &&
-              isInSelectedRange(addCalendarDays(calendarDay.date, -1)),
-            )
-            const selectedConnectsNext = Boolean(
-              isSelected &&
-              index % 7 !== 6 &&
-              isInSelectedRange(addCalendarDays(calendarDay.date, 1)),
-            )
-            const connectsPrevious = Boolean(
-              isSelected
-                ? selectedConnectsPrevious
-                : schedule &&
-                    index % 7 !== 0 &&
-                    schedule.startDate <= addCalendarDays(calendarDay.date, -1),
-            )
-            const connectsNext = Boolean(
-              isSelected
-                ? selectedConnectsNext
-                : schedule &&
-                    index % 7 !== 6 &&
-                    addCalendarDays(calendarDay.date, 1) <= schedule.endDate,
-            )
-
-            return (
-              <CalendarDayButton
-                connectsNext={connectsNext}
-                connectsPrevious={connectsPrevious}
-                date={calendarDay.date}
-                day={calendarDay.day}
-                disabled={Boolean(
-                  editingLeaveUsageId || editingOutingId || isOutingFormOpen,
-                )}
-                hasOuting={Boolean(outing)}
-                isSelected={isSelected}
-                isToday={calendarDay.date === today}
-                key={calendarDay.date}
-                leaveClassName={
-                  leaveGrant ? LEAVE_TYPE_STYLES[leaveGrant.type] : undefined
-                }
-                onSelect={selectDate}
-                usageLabel={usageLabel}
-                weekdayIndex={index % 7}
-              />
-            )
-          })}
-        </div>
+        <CalendarGrid
+          days={calendarDays}
+          disabled={Boolean(
+            editingLeaveUsageId || editingOutingId || isOutingFormOpen,
+          )}
+          onSelectDate={selectDate}
+        />
 
         {(visibleMonthLegendGrants.length > 0 ||
           outings.some(

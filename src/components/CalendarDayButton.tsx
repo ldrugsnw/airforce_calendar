@@ -1,6 +1,6 @@
 import { formatCalendarDate, type CalendarDate } from '../domain/calendarDate'
 
-type CalendarDayButtonProps = {
+export type CalendarDayItem = {
   date: CalendarDate
   day: number
   weekdayIndex: number
@@ -11,6 +11,9 @@ type CalendarDayButtonProps = {
   connectsPrevious: boolean
   connectsNext: boolean
   leaveClassName?: string
+}
+
+type CalendarDayButtonProps = CalendarDayItem & {
   disabled: boolean
   onSelect: (date: CalendarDate) => void
 }
