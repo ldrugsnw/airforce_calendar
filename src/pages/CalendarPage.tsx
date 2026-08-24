@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { useSearchParams } from 'react-router'
 import { CalendarGrid } from '../components/CalendarGrid'
 import { CalendarLegend } from '../components/CalendarLegend'
 import { CalendarMonthHeader } from '../components/CalendarMonthHeader'
 import { LeaveUsageDetailCard } from '../components/LeaveUsageDetailCard'
+import { LeaveUsageCreateForm } from '../components/LeaveUsageCreateForm'
+import { LeaveUsageEditForm } from '../components/LeaveUsageEditForm'
 import { OutingDetailCard } from '../components/OutingDetailCard'
 import { OutingFormPanel } from '../components/OutingFormPanel'
 import { LEAVE_TYPE_STYLES } from '../components/calendarStyles'
@@ -11,9 +13,7 @@ import { PageHeader } from '../components/PageHeader'
 import {
   addCalendarDays,
   createMonthGrid,
-  formatCalendarDate,
   getCalendarMonth,
-  getInclusiveDayCount,
   getKstToday,
   moveCalendarMonth,
   orderCalendarRange,
@@ -95,6 +95,10 @@ export function CalendarPage() {
   const availableLeaveGrants = leaveGrants.filter(
     (leaveGrant) => getAvailableDays(leaveGrant, otherLeaveUsages) > 0,
   )
+  const availableLeaveGrantOptions = availableLeaveGrants.map((leaveGrant) => ({
+    id: leaveGrant.id,
+    label: `${getLeaveTypeLabel(leaveGrant.type)} · ${leaveGrant.reason || '사유 없음'} · 사용 가능 ${getAvailableDays(leaveGrant, otherLeaveUsages)}일`,
+  }))
   const selectedLeaveUsage = leaveUsages.find(
     (leaveUsage) => leaveUsage.id === selectedLeaveUsageId && !leaveUsage.canceled,
   )
@@ -349,6 +353,14 @@ export function CalendarPage() {
     setFormMessage(null)
   }
 
+  function resetLeaveUsageSelection() {
+    setStartDate(null)
+    setEndDate(null)
+    setSelectedLeaveGrantId('')
+    setEditingLeaveUsageId(null)
+    setFormMessage(null)
+  }
+
   function cancelSelectedLeaveUsage() {
     if (!selectedLeaveUsage) return
 
@@ -509,98 +521,29 @@ export function CalendarPage() {
           />
         )}
         {editingLeaveUsageId && editingLeaveUsage && (
-          <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-sm leading-6 text-slate-600">
-              시작일과 종료일을 바꾸면 주말과 공휴일을 포함한 총일수가 자동으로 계산됩니다.
-            </p>
-            <div className="mt-4 grid min-w-0 grid-cols-1 gap-4">
-              <label className="block min-w-0 text-sm font-semibold text-slate-800">
-                시작일
-                <input
-                  className="calendar-date-input calendar-date-input-centered mt-2 h-14 min-w-0 w-full max-w-full rounded-2xl border border-slate-300 bg-white px-4 text-base font-normal leading-6 text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  max={endDate ?? undefined}
-                  onChange={(event) => {
-                    setStartDate(
-                      event.target.value
-                        ? (event.target.value as CalendarDate)
-                        : null,
-                    )
-                    setFormMessage(null)
-                  }}
-                  type="date"
-                  value={startDate ?? ''}
-                />
-              </label>
-              <label className="block min-w-0 text-sm font-semibold text-slate-800">
-                종료일
-                <input
-                  className="calendar-date-input calendar-date-input-centered mt-2 h-14 min-w-0 w-full max-w-full rounded-2xl border border-slate-300 bg-white px-4 text-base font-normal leading-6 text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  min={startDate ?? undefined}
-                  onChange={(event) => {
-                    setEndDate(
-                      event.target.value
-                        ? (event.target.value as CalendarDate)
-                        : null,
-                    )
-                    setFormMessage(null)
-                  }}
-                  type="date"
-                  value={endDate ?? ''}
-                />
-              </label>
-            </div>
-            <div className="mt-4 rounded-2xl bg-blue-50 p-4">
-              <p className="text-xs font-semibold text-blue-700">변경할 휴가 일수</p>
-              <p className="mt-1 text-2xl font-bold text-blue-950">
-                {startDate && endDate && startDate <= endDate
-                  ? `${getInclusiveDayCount(startDate, endDate)}일`
-                  : '날짜를 확인해주세요'}
-              </p>
-            </div>
-            <label className="mt-5 block min-w-0 text-sm font-semibold text-slate-800" htmlFor="edit-leave-grant">
-              사용할 보유 휴가
-              <span className="relative mt-2 block min-w-0 w-full">
-                <select
-                  className="h-14 min-w-0 w-full max-w-full appearance-none rounded-2xl border border-slate-300 bg-white px-4 pr-12 text-base leading-6 text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  id="edit-leave-grant"
-                  onChange={(event) => {
-                    setSelectedLeaveGrantId(event.target.value)
-                    setFormMessage(null)
-                  }}
-                  value={selectedLeaveGrantId}
-                >
-                  <option value="">보유 휴가를 선택하세요</option>
-                  {availableLeaveGrants.map((leaveGrant) => (
-                    <option key={leaveGrant.id} value={leaveGrant.id}>
-                      {getLeaveTypeLabel(leaveGrant.type)} · {leaveGrant.reason || '사유 없음'} · 사용 가능 {getAvailableDays(leaveGrant, otherLeaveUsages)}일
-                    </option>
-                  ))}
-                </select>
-                <SelectChevron />
-              </span>
-            </label>
-            {formMessage?.type === 'error' && (
-              <p className="mt-2 text-sm font-medium text-red-600" role="alert">
-                {formMessage.text}
-              </p>
-            )}
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button
-                className="min-h-12 rounded-2xl bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm"
-                onClick={saveLeaveUsage}
-                type="button"
-              >
-                변경사항 저장
-              </button>
-              <button
-                className="min-h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
-                onClick={stopEditingLeaveUsage}
-                type="button"
-              >
-                수정 취소
-              </button>
-            </div>
-          </div>
+          <LeaveUsageEditForm
+            endDate={endDate}
+            errorMessage={
+              formMessage?.type === 'error' ? formMessage.text : undefined
+            }
+            grantId={selectedLeaveGrantId}
+            grantOptions={availableLeaveGrantOptions}
+            onCancel={stopEditingLeaveUsage}
+            onEndDateChange={(date) => {
+              setEndDate(date)
+              setFormMessage(null)
+            }}
+            onGrantChange={(grantId) => {
+              setSelectedLeaveGrantId(grantId)
+              setFormMessage(null)
+            }}
+            onSave={saveLeaveUsage}
+            onStartDateChange={(date) => {
+              setStartDate(date)
+              setFormMessage(null)
+            }}
+            startDate={startDate}
+          />
         )}
         {!selectedLeaveUsage && !selectedOuting && !editingLeaveUsageId && !editingOutingId && !startDate && (
           <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -633,81 +576,21 @@ export function CalendarPage() {
           />
         )}
         {!editingLeaveUsageId && startDate && endDate && (
-          <div className="mt-2">
-            <p className="flex flex-wrap items-baseline gap-x-1.5 font-semibold text-slate-900">
-              <span className="whitespace-nowrap">
-                {formatCalendarDate(startDate)}{' '}
-              </span>
-              <span className="whitespace-nowrap">
-                ~ {formatCalendarDate(endDate)}
-              </span>
-            </p>
-            <p className="mt-1 text-sm text-slate-500">
-              주말과 공휴일을 포함해 총{' '}
-              <strong className="text-brand-700">
-                {getInclusiveDayCount(startDate, endDate)}일
-              </strong>
-              이에요.
-            </p>
-            {availableLeaveGrants.length > 0 ? (
-              <div className="mt-5">
-                <label className="block min-w-0 text-sm font-semibold text-slate-800" htmlFor="leave-grant">
-                  사용할 보유 휴가
-                  <span className="relative mt-2 block min-w-0 w-full">
-                    <select
-                      className="h-14 min-w-0 w-full max-w-full appearance-none rounded-2xl border border-slate-300 bg-white px-4 pr-12 text-base leading-6 text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                      id="leave-grant"
-                      onChange={(event) => {
-                        setSelectedLeaveGrantId(event.target.value)
-                        setFormMessage(null)
-                      }}
-                      value={selectedLeaveGrantId}
-                    >
-                      <option value="">보유 휴가를 선택하세요</option>
-                      {availableLeaveGrants.map((leaveGrant) => (
-                        <option key={leaveGrant.id} value={leaveGrant.id}>
-                          {getLeaveTypeLabel(leaveGrant.type)} · {leaveGrant.reason || '사유 없음'} · 사용 가능 {getAvailableDays(leaveGrant, leaveUsages)}일
-                        </option>
-                      ))}
-                    </select>
-                    <SelectChevron />
-                  </span>
-                </label>
-                {formMessage?.type === 'error' && (
-                  <p className="mt-2 text-sm font-medium text-red-600" role="alert">
-                    {formMessage.text}
-                  </p>
-                )}
-                <button
-                  className="mt-4 min-h-12 w-full rounded-2xl bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
-                  onClick={saveLeaveUsage}
-                  type="button"
-                >
-                  {editingLeaveUsageId ? '휴가 일정 수정' : '휴가 일정 저장'}
-                </button>
-              </div>
-            ) : (
-              <p className="mt-4 text-sm leading-6 text-slate-600">
-                사용할 수 있는 보유 휴가가 없습니다.{' '}
-                <Link className="font-semibold text-brand-700 underline" to="/leave/new">
-                  보유 휴가 추가
-                </Link>
-              </p>
-            )}
-            <button
-              className="mt-4 min-h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
-              onClick={() => {
-                setStartDate(null)
-                setEndDate(null)
-                setSelectedLeaveGrantId('')
-                setEditingLeaveUsageId(null)
-                setFormMessage(null)
-              }}
-              type="button"
-            >
-              선택 초기화
-            </button>
-          </div>
+          <LeaveUsageCreateForm
+            endDate={endDate}
+            errorMessage={
+              formMessage?.type === 'error' ? formMessage.text : undefined
+            }
+            grantId={selectedLeaveGrantId}
+            grantOptions={availableLeaveGrantOptions}
+            onGrantChange={(grantId) => {
+              setSelectedLeaveGrantId(grantId)
+              setFormMessage(null)
+            }}
+            onReset={resetLeaveUsageSelection}
+            onSave={saveLeaveUsage}
+            startDate={startDate}
+          />
         )}
         {!startDate && formMessage?.type === 'success' && (
           <p className="mt-2 text-sm font-semibold text-emerald-700" role="status">
@@ -716,24 +599,5 @@ export function CalendarPage() {
         )}
       </section>
     </div>
-  )
-}
-
-function SelectChevron() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-slate-500"
-      fill="none"
-      viewBox="0 0 20 20"
-    >
-      <path
-        d="m6 8 4 4 4-4"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.75"
-      />
-    </svg>
   )
 }
