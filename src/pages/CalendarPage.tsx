@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
+import { CalendarDayButton } from '../components/CalendarDayButton'
 import { CalendarMonthHeader } from '../components/CalendarMonthHeader'
 import { PageHeader } from '../components/PageHeader'
 import {
@@ -447,39 +448,25 @@ export function CalendarPage() {
             )
 
             return (
-              <button
-                aria-label={`${formatCalendarDate(calendarDay.date)}${calendarDay.date === today ? ', 오늘' : ''}${usageLabel ? `, ${usageLabel}` : ''}${outing ? ', 외출' : ''}`}
-                aria-pressed={isSelected}
-                className={`relative mx-auto flex h-10 w-full items-center justify-center text-sm font-medium transition ${
-                  connectsPrevious ? 'rounded-l-none' : 'rounded-l-xl'
-                } ${connectsNext ? 'rounded-r-none' : 'rounded-r-xl'} ${
-                  isSelected
-                    ? 'bg-blue-100 text-blue-950'
-                    : leaveGrant
-                      ? LEAVE_TYPE_STYLES[leaveGrant.type]
-                    : calendarDay.date === today
-                      ? 'bg-brand-50 text-brand-700 ring-1 ring-brand-500'
-                      : index % 7 === 0
-                        ? 'text-red-500 hover:bg-red-50'
-                        : index % 7 === 6
-                          ? 'text-blue-500 hover:bg-blue-50'
-                          : 'text-slate-700 hover:bg-slate-100'
-                }`}
+              <CalendarDayButton
+                connectsNext={connectsNext}
+                connectsPrevious={connectsPrevious}
+                date={calendarDay.date}
+                day={calendarDay.day}
                 disabled={Boolean(
                   editingLeaveUsageId || editingOutingId || isOutingFormOpen,
                 )}
+                hasOuting={Boolean(outing)}
+                isSelected={isSelected}
+                isToday={calendarDay.date === today}
                 key={calendarDay.date}
-                onClick={() => selectDate(calendarDay.date)}
-                type="button"
-              >
-                <span>{calendarDay.day}</span>
-                {outing && (
-                  <span
-                    aria-hidden="true"
-                    className="absolute bottom-1 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-orange-500 ring-1 ring-white"
-                  />
-                )}
-              </button>
+                leaveClassName={
+                  leaveGrant ? LEAVE_TYPE_STYLES[leaveGrant.type] : undefined
+                }
+                onSelect={selectDate}
+                usageLabel={usageLabel}
+                weekdayIndex={index % 7}
+              />
             )
           })}
         </div>
