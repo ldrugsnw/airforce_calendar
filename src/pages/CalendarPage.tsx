@@ -3,8 +3,10 @@ import { Link, useSearchParams } from 'react-router'
 import { CalendarGrid } from '../components/CalendarGrid'
 import { CalendarLegend } from '../components/CalendarLegend'
 import { CalendarMonthHeader } from '../components/CalendarMonthHeader'
+import { LeaveUsageDetailCard } from '../components/LeaveUsageDetailCard'
 import { OutingDetailCard } from '../components/OutingDetailCard'
 import { OutingFormPanel } from '../components/OutingFormPanel'
+import { LEAVE_TYPE_STYLES } from '../components/calendarStyles'
 import { PageHeader } from '../components/PageHeader'
 import {
   addCalendarDays,
@@ -17,28 +19,16 @@ import {
   orderCalendarRange,
   type CalendarDate,
 } from '../domain/calendarDate'
-import { getLeaveTypeLabel, type LeaveType } from '../domain/leave'
+import { getLeaveTypeLabel } from '../domain/leave'
 import {
   createContinuousLeaveSchedules,
   getAvailableDays,
   getContinuousLeaveScheduleForUsage,
-  getLeaveUsageStatus,
-  getLeaveUsageStatusLabel,
   validateLeaveUsage,
   type LeaveUsage,
 } from '../domain/leaveUsage'
 import { validateOuting, type Outing } from '../domain/outing'
 import { useAppDispatch, useAppState } from '../store/appStateContext'
-
-const LEAVE_TYPE_STYLES: Record<LeaveType, string> = {
-  annual: 'bg-blue-600 text-white',
-  reward: 'bg-red-600 text-white',
-  consolation: 'bg-amber-300 text-amber-950',
-  official: 'bg-violet-600 text-white',
-  petition: 'bg-slate-950 text-white',
-  performance: 'bg-green-600 text-white',
-  other: 'bg-slate-600 text-white',
-}
 
 export function CalendarPage() {
   const { leaveGrants, leaveUsages, outings } = useAppState()
@@ -504,136 +494,19 @@ export function CalendarPage() {
           />
         )}
         {selectedLeaveUsage && selectedUsageGrant && (
-          <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            {selectedContinuousSchedule && (
-              <section
-                aria-labelledby="continuous-schedule-title"
-                className="rounded-2xl bg-slate-950 p-4 text-white"
-              >
-                <p className="text-xs font-semibold text-blue-200">연결된 전체 일정</p>
-                <h3
-                  aria-label={`${formatCalendarDate(selectedContinuousSchedule.startDate)} ~ ${formatCalendarDate(selectedContinuousSchedule.endDate)}`}
-                  className="mt-2 flex flex-wrap items-baseline gap-x-1.5 text-base font-bold"
-                  id="continuous-schedule-title"
-                >
-                  <span className="whitespace-nowrap">
-                    {formatCalendarDate(selectedContinuousSchedule.startDate)}{' '}
-                  </span>
-                  <span className="whitespace-nowrap">
-                    ~ {formatCalendarDate(selectedContinuousSchedule.endDate)}
-                  </span>
-                </h3>
-                <p className="mt-1 text-sm text-slate-300">
-                  총 {selectedContinuousSchedule.totalDays}일 ·{' '}
-                  {selectedContinuousSchedule.composition
-                    .map(
-                      ({ days, type }) =>
-                        `${getLeaveTypeLabel(type)} ${days}일`,
-                    )
-                    .join(' + ')}
-                </p>
-                <ul className="mt-3 space-y-2 border-t border-white/10 pt-3">
-                  {selectedContinuousSchedule.usages.map((usage) => {
-                    const grant = leaveGrants.find(
-                      (item) => item.id === usage.leaveGrantId,
-                    )
-                    if (!grant) return null
-
-                    return (
-                      <li
-                        className="flex flex-col items-start justify-between gap-1 text-xs sm:flex-row sm:items-center sm:gap-3"
-                        key={usage.id}
-                      >
-                        <span className="font-semibold">
-                          {getLeaveTypeLabel(grant.type)}
-                          {usage.id === selectedLeaveUsage.id && (
-                            <span className="ml-1 text-blue-200">(선택한 기록)</span>
-                          )}
-                        </span>
-                        <span className="break-words text-left text-slate-300 sm:text-right">
-                          {usage.startDate} ~ {usage.endDate}
-                        </span>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </section>
-            )}
-            <div className="mt-5 flex items-start justify-between gap-3">
-              <div>
-                <span
-                  className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${LEAVE_TYPE_STYLES[selectedUsageGrant.type]}`}
-                >
-                  {getLeaveTypeLabel(selectedUsageGrant.type)}
-                </span>
-                <span className="ml-2 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-                  {getLeaveUsageStatusLabel(
-                    getLeaveUsageStatus(selectedLeaveUsage, today),
-                  )}
-                </span>
-                <p className="mt-3 font-semibold text-slate-950">
-                  {selectedUsageGrant.reason || '사유 없음'}
-                </p>
-              </div>
-              <strong className="shrink-0 text-lg text-slate-950">
-                {getInclusiveDayCount(
-                  selectedLeaveUsage.startDate,
-                  selectedLeaveUsage.endDate,
-                )}
-                일
-              </strong>
-            </div>
-            <dl className="mt-4 space-y-3 border-t border-slate-100 pt-4 text-sm">
-              <div className="grid gap-1 sm:flex sm:justify-between sm:gap-4">
-                <dt className="text-slate-500">사용 기간</dt>
-                <dd className="flex flex-wrap items-baseline gap-x-1.5 font-medium text-slate-900 sm:justify-end sm:text-right">
-                  <span className="whitespace-nowrap">
-                    {formatCalendarDate(selectedLeaveUsage.startDate)}{' '}
-                  </span>
-                  <span className="whitespace-nowrap">
-                    ~ {formatCalendarDate(selectedLeaveUsage.endDate)}
-                  </span>
-                </dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-slate-500">획득 기록</dt>
-                <dd className="text-right font-medium text-slate-900">
-                  {selectedUsageGrant.acquiredDate} · {selectedUsageGrant.days}일 획득
-                </dd>
-              </div>
-            </dl>
-            {selectedUsageGrant.memo && (
-              <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-600">
-                {selectedUsageGrant.memo}
-              </p>
-            )}
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button
-                className="min-h-11 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white"
-                onClick={editSelectedLeaveUsage}
-                type="button"
-              >
-                일정 수정
-              </button>
-              <button
-                className="min-h-11 rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700"
-                onClick={cancelSelectedLeaveUsage}
-                type="button"
-              >
-                일정 취소
-              </button>
-            </div>
-            <button
-              className="mt-2 min-h-11 w-full rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700"
-              onClick={() => {
-                setSelectedLeaveUsageId(null)
-                setSearchParams({}, { replace: true })
-              }}
-              type="button"
-            >
-              상세 닫기
-            </button>
-          </div>
+          <LeaveUsageDetailCard
+            grant={selectedUsageGrant}
+            leaveGrants={leaveGrants}
+            onCancel={cancelSelectedLeaveUsage}
+            onClose={() => {
+              setSelectedLeaveUsageId(null)
+              setSearchParams({}, { replace: true })
+            }}
+            onEdit={editSelectedLeaveUsage}
+            schedule={selectedContinuousSchedule}
+            today={today}
+            usage={selectedLeaveUsage}
+          />
         )}
         {editingLeaveUsageId && editingLeaveUsage && (
           <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
