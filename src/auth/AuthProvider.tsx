@@ -29,18 +29,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({
     status,
     user,
-    async requestLoginLink(email: string) {
+    async signInWithGoogle() {
       if (!supabase) return { ok: false, message: '서버 로그인이 설정되지 않았습니다.' }
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: window.location.origin,
-        },
-      })
-      return error
-        ? { ok: false, message: '로그인 이메일을 보내지 못했습니다. 잠시 후 다시 시도해주세요.' }
-        : { ok: true }
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin,
+          },
+        })
+        return error
+          ? { ok: false, message: 'Google 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해주세요.' }
+          : { ok: true }
+      } catch {
+        return { ok: false, message: '네트워크 연결을 확인하고 Google 로그인을 다시 시도해주세요.' }
+      }
     },
     async signOut() {
       if (user) clearServerCache(user.id)
