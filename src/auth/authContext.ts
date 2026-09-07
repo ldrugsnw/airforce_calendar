@@ -6,8 +6,7 @@ export type AuthStatus = 'initializing' | 'authenticated' | 'unauthenticated'
 export type AuthContextValue = {
   status: AuthStatus
   user: User | null
-  requestOtp: (email: string) => Promise<{ ok: boolean; message?: string }>
-  verifyOtp: (email: string, token: string) => Promise<{ ok: boolean; message?: string }>
+  requestLoginLink: (email: string) => Promise<{ ok: boolean; message?: string }>
   signOut: () => Promise<void>
 }
 

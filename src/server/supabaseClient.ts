@@ -4,8 +4,9 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as
   | string
   | undefined
+const isTestMode = import.meta.env.MODE === 'test'
 
-export const isServerMode = Boolean(supabaseUrl && supabasePublishableKey)
+export const isServerMode = !isTestMode && Boolean(supabaseUrl && supabasePublishableKey)
 
 export const supabase = isServerMode
   ? createClient(supabaseUrl!, supabasePublishableKey!, {

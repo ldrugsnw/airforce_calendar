@@ -29,22 +29,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({
     status,
     user,
-    async requestOtp(email: string) {
+    async requestLoginLink(email: string) {
       if (!supabase) return { ok: false, message: '서버 로그인이 설정되지 않았습니다.' }
       const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(), options: { shouldCreateUser: true },
+        email: email.trim().toLowerCase(),
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: window.location.origin,
+        },
       })
       return error
-        ? { ok: false, message: '인증 코드를 보내지 못했습니다. 잠시 후 다시 시도해주세요.' }
-        : { ok: true }
-    },
-    async verifyOtp(email: string, token: string) {
-      if (!supabase) return { ok: false, message: '서버 로그인이 설정되지 않았습니다.' }
-      const { error } = await supabase.auth.verifyOtp({
-        email: email.trim().toLowerCase(), token: token.trim(), type: 'email',
-      })
-      return error
-        ? { ok: false, message: '인증 코드가 올바르지 않거나 만료되었습니다.' }
+        ? { ok: false, message: '로그인 이메일을 보내지 못했습니다. 잠시 후 다시 시도해주세요.' }
         : { ok: true }
     },
     async signOut() {

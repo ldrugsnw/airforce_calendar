@@ -2,7 +2,7 @@
 
 대한민국 공군 장병을 위한 모바일 중심의 개인 휴가 관리 캘린더입니다.
 
-현재 보유 휴가·휴가 일정·외출 관리와 브라우저 로컬 저장을 지원합니다. Supabase 환경 변수를 설정하면 이메일 OTP 로그인, 사용자별 서버 저장, 오프라인 읽기 캐시와 기존 로컬 데이터 이전 모드로 동작합니다.
+현재 보유 휴가·휴가 일정·외출 관리와 브라우저 로컬 저장을 지원합니다. Supabase 환경 변수를 설정하면 이메일 링크 로그인, 사용자별 서버 저장, 오프라인 읽기 캐시와 기존 로컬 데이터 이전 모드로 동작합니다.
 
 ## 개발 환경
 
@@ -31,7 +31,15 @@ npm run supabase:reset
 npm run test:db
 ```
 
-비공개 베타 사용 이메일은 Supabase Dashboard의 `beta_allowlist`에 소문자로 직접 추가합니다. OTP 만료는 10분, 재전송 간격은 60초로 구성되어 있습니다.
+로컬 설정의 이메일 로그인 링크 만료는 10분, 재전송 간격은 60초입니다. 외부 프로젝트에서는 Auth 설정을 별도로 확인합니다. 현재 피드백 베타는 별도 이메일 허용 목록 없이 가입할 수 있습니다.
+
+## Vercel 배포
+
+- Framework Preset은 `Vite`, Build Command는 `npm run build`, Output Directory는 `dist`를 사용합니다.
+- `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`를 Vercel 환경 변수에 설정한 뒤 빌드합니다.
+- `vercel.json`은 `/calendar`, `/leave` 같은 직접 경로 요청을 앱으로 연결합니다.
+- 배포 주소를 Supabase Authentication의 URL Configuration에서 Site URL과 Redirect URLs에 등록합니다.
+- 지인에게 로그인 메일을 보내기 전 [custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp)를 설정합니다. Supabase 기본 메일 발송은 프로젝트 팀원 주소로 제한됩니다.
 
 ## 확인
 

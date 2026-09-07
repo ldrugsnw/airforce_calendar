@@ -5,9 +5,6 @@ select plan(9);
 select has_table('public', 'leave_grants', 'leave_grants table exists');
 select has_table('public', 'mutation_requests', 'mutation request table exists');
 
-insert into public.beta_allowlist(normalized_email)
-values ('alpha@example.com'), ('bravo@example.com');
-
 insert into auth.users(
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at
@@ -22,7 +19,7 @@ insert into auth.users(
 select is(
   (select count(*)::integer from public.user_accounts),
   2,
-  'auth trigger creates app accounts'
+  'auth trigger creates app accounts without an allowlist'
 );
 
 select set_config(

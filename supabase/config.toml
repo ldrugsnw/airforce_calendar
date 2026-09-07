@@ -10,7 +10,3 @@ enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
 max_frequency = "60s"
-
-[auth.hook.before_user_created]
-enabled = true
-uri = "pg-functions://postgres/public/hook_before_user_created"
