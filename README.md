@@ -1,29 +1,93 @@
-# airforce-calendar
+# 공군 휴가 캘린더
 
-대한민국 공군 장병을 위한 모바일 중심의 개인 휴가 관리 캘린더입니다.
+공군 장병이 여러 종류의 보유 휴가와 사용 일정을 한곳에서 관리하고, 남은 휴가와 다음 휴가까지의 D-day를 확인할 수 있는 모바일 중심 웹 서비스입니다.
 
-현재 보유 휴가·휴가 일정·외출 관리와 브라우저 로컬 저장을 지원합니다. Supabase 환경 변수를 설정하면 Google 로그인, 사용자별 서버 저장, 오프라인 읽기 캐시와 기존 로컬 데이터 이전 모드로 동작합니다.
+**배포 주소:** [airforce-calendar.vercel.app](https://airforce-calendar.vercel.app/)
 
-## 개발 환경
+## 프로젝트 소개
 
-- React
+군 복무 중에는 연가뿐 아니라 포상휴가, 위로휴가, 공가처럼 서로 다른 종류의 휴가를 관리해야 합니다. 메모나 일반 캘린더만으로는 어떤 휴가를 얼마나 보유하고 있는지, 예정된 일정을 제외하면 실제로 며칠을 더 사용할 수 있는지 한눈에 파악하기 어렵습니다.
+
+공군 휴가 캘린더는 **획득한 휴가**와 **사용할 일정**을 연결해 잔여 일수를 자동으로 계산합니다. 달력에서 휴가와 외출 일정을 관리하고, 홈에서 현재 휴가 상태와 다음 휴가까지 남은 날짜를 빠르게 확인할 수 있습니다.
+
+## 주요 기능
+
+- 연가, 포상휴가, 위로휴가, 공가, 청원휴가, 성과제 및 기타 휴가 등록
+- 휴가별 총 획득·사용 완료·사용 예정·사용 가능 일수 자동 계산
+- 월간 달력에서 휴가 기간 선택 및 일정 등록·수정·취소
+- 서로 이어지는 여러 휴가 기록을 하나의 연속 일정으로 구성
+- 현재 휴가 상태와 다음 휴가까지의 D-day 표시
+- 휴가 잔여 일수에 영향을 주지 않는 외출 일정 관리
+- 휴가 종류별 색상과 범례를 이용한 일정 구분
+- Google 로그인 및 사용자별 데이터 저장
+- 동일 계정으로 여러 기기에서 기록 확인
+- 네트워크 연결이 없을 때 마지막 동기화 데이터 읽기 지원
+
+## 사용 흐름
+
+1. Google 계정으로 로그인합니다.
+2. `내 휴가`에서 획득한 휴가의 종류와 일수를 등록합니다.
+3. `달력`에서 사용할 날짜와 보유 휴가를 선택해 일정을 저장합니다.
+4. 자동으로 계산된 잔여 일수와 달력 일정을 확인합니다.
+5. `홈`에서 다음 휴가의 D-day, 전체 기간과 휴가 구성을 확인합니다.
+
+## 구현에서 고민한 점
+
+### 날짜와 잔여 일수의 일관성
+
+휴가 일정은 시작일과 종료일을 모두 포함하며 주말과 공휴일도 사용 일수에 포함합니다. 화면마다 서로 다른 결과가 나오지 않도록 날짜 검증, 일수 계산, 일정 상태와 D-day 계산을 순수 함수로 분리하고 테스트했습니다. 오늘 날짜는 대한민국 표준시(KST)를 기준으로 판단합니다.
+
+### 연결된 휴가 일정 표현
+
+서로 다른 종류의 휴가를 연속해서 사용하는 경우, 각각의 보유 휴가와 사용 기록은 독립적으로 유지하면서 사용자에게는 하나의 연속된 휴가 일정으로 보여줍니다. 덕분에 `연가 3일 + 위로휴가 2일`과 같이 실제 휴가 구성을 확인할 수 있습니다.
+
+### 사용자별 데이터 보호와 동기화
+
+Supabase Row Level Security로 로그인한 사용자가 자신의 데이터만 조회할 수 있도록 구성했습니다. 데이터 변경은 서버 RPC를 통해 처리하며, 요청 식별자를 이용한 중복 변경 방지와 revision 기반 충돌 검사를 적용했습니다. 서버에 연결할 수 없을 때는 사용자별로 저장된 마지막 동기화 데이터를 읽기 전용으로 제공합니다.
+
+### 기존 로컬 데이터 보존
+
+서버 기능을 도입하기 전 브라우저에 저장된 기록이 있다면, 서버 계정이 비어 있을 때 사용자의 동의를 받아 이전할 수 있도록 설계했습니다. 이전이 완료되기 전에는 원본을 삭제하지 않으며, 일정 기간 복구할 수 있는 로컬 백업을 남깁니다.
+
+## 향후 개선 방향
+
+현재는 공군 장병의 휴가 관리 흐름을 기준으로 제작했습니다. 앞으로는 계정을 생성할 때 **육군·해군·공군·해병대 중 소속 군을 선택**하고, 선택한 군에 맞는 휴가 관리 경험을 제공하는 방향으로 확장하고자 합니다.
+
+군별 휴가 항목과 기준은 복무 조건이나 개인에 따라 다를 수 있으므로, 실제 사용자 피드백과 공식 기준을 확인하며 구체화할 예정입니다.
+
+## 기술 스택
+
+- React 19
 - TypeScript
 - Vite
+- React Router
+- React Context + `useReducer`
 - Tailwind CSS
-- Vitest
+- Supabase Auth · PostgreSQL · Row Level Security · RPC
+- Vitest · React Testing Library
+- Vercel
 
-## 실행
+## 로컬 실행
 
 ```bash
 npm install
 npm run dev
 ```
 
-환경 변수가 없으면 기존 로컬 저장 모드로 실행됩니다. 서버 모드를 사용하려면 `.env.example`을 참고해 `.env`에 Supabase URL과 publishable key를 설정합니다. secret/service-role key는 브라우저 환경 변수에 넣지 않습니다.
+Supabase 환경 변수가 없으면 브라우저 `localStorage`를 사용하는 로컬 모드로 실행됩니다.
 
-## 로컬 Supabase
+Google 로그인과 사용자별 서버 저장을 사용하려면 `.env.example`을 참고해 `.env`를 설정합니다.
 
-Docker가 실행 중인 환경에서 다음 순서로 서버 스키마와 DB 테스트를 확인합니다.
+```env
+VITE_SUPABASE_URL=your-supabase-url
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+```
+
+브라우저 환경 변수에는 secret 또는 service-role key를 저장하지 않습니다.
+
+## 로컬 Supabase 실행
+
+Docker가 실행 중인 환경에서 다음 명령으로 로컬 스키마와 데이터베이스 테스트를 확인할 수 있습니다.
 
 ```bash
 npm run supabase:start
@@ -31,19 +95,9 @@ npm run supabase:reset
 npm run test:db
 ```
 
-서버 모드에서 Google 로그인을 사용하려면 Supabase Auth의 Google Provider와 Google Cloud 웹 OAuth 클라이언트를 연결해야 합니다. 현재 피드백 베타는 별도 이메일 허용 목록 없이 가입할 수 있습니다.
+서버 모드에서 Google 로그인을 사용하려면 Supabase Auth의 Google Provider와 Google Cloud 웹 OAuth 클라이언트 설정이 필요합니다.
 
-## Vercel 배포
-
-- Framework Preset은 `Vite`, Build Command는 `npm run build`, Output Directory는 `dist`를 사용합니다.
-- `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`를 Vercel 환경 변수에 설정한 뒤 빌드합니다.
-- `vercel.json`은 `/calendar`, `/leave` 같은 직접 경로 요청을 앱으로 연결합니다.
-- 배포 주소를 Supabase Authentication의 URL Configuration에서 Site URL과 Redirect URLs에 등록합니다.
-- Google Cloud 웹 OAuth 클라이언트에는 배포 origin과 Supabase Dashboard에 표시된 callback URL을 등록합니다.
-- Supabase Authentication의 Google Provider에 Client ID와 Client Secret을 저장합니다. Client Secret은 소스 코드나 Vercel 환경 변수에 넣지 않습니다.
-- Google Auth Platform의 Data Access에는 `openid`, 이메일, 프로필 기본 scope만 사용합니다.
-
-## 확인
+## 검증
 
 ```bash
 npm run lint
@@ -51,3 +105,9 @@ npm test
 npm run build
 npm run test:db
 ```
+
+## 배포
+
+Vercel에서 Framework Preset은 `Vite`, Build Command는 `npm run build`, Output Directory는 `dist`를 사용합니다. `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`를 배포 환경 변수로 설정해야 합니다.
+
+`vercel.json`은 `/calendar`, `/leave` 같은 경로로 직접 접근하거나 새로고침해도 SPA가 정상적으로 열리도록 구성되어 있습니다.
