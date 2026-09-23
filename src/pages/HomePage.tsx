@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import { EmptyState } from '../components/EmptyState'
+import { LeaveHeatmap } from '../components/LeaveHeatmap'
 import { PageHeader } from '../components/PageHeader'
 import { formatCalendarDate, getKstToday } from '../domain/calendarDate'
 import { getLeaveTypeLabel } from '../domain/leave'
@@ -62,6 +63,7 @@ export function HomePage() {
           </Link>
         </>
       )}
+      <LeaveHeatmap grants={leaveGrants} today={today} usages={leaveUsages} />
     </>
   )
 }

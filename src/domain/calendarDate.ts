@@ -12,6 +12,8 @@ export type CalendarDay = {
 
 const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000
+export const MIN_CALENDAR_DATE = '2000-01-01' as CalendarDate
+export const MAX_CALENDAR_DATE = '2999-12-31' as CalendarDate
 
 function toDateParts(date: CalendarDate) {
   const match = CALENDAR_DATE_PATTERN.exec(date)
@@ -38,6 +40,7 @@ function toDateParts(date: CalendarDate) {
 
 export function isCalendarDate(value: unknown): value is CalendarDate {
   if (typeof value !== 'string') return false
+  if (value < MIN_CALENDAR_DATE || value > MAX_CALENDAR_DATE) return false
 
   try {
     toDateParts(value as CalendarDate)
@@ -45,6 +48,24 @@ export function isCalendarDate(value: unknown): value is CalendarDate {
   } catch {
     return false
   }
+}
+
+export function addCalendarMonths(date: CalendarDate, months: number) {
+  if (!Number.isInteger(months)) {
+    throw new Error('이동할 개월 수는 정수여야 합니다.')
+  }
+
+  const { day, month, year } = toDateParts(date)
+  const targetFirstDay = new Date(Date.UTC(year, month - 1 + months, 1))
+  const targetYear = targetFirstDay.getUTCFullYear()
+  const targetMonth = targetFirstDay.getUTCMonth() + 1
+  const lastDay = new Date(Date.UTC(targetYear, targetMonth, 0)).getUTCDate()
+  const result = createCalendarDate(targetYear, targetMonth, Math.min(day, lastDay))
+
+  if (!isCalendarDate(result)) {
+    throw new Error(`허용된 날짜 범위를 벗어났습니다: ${result}`)
+  }
+  return result
 }
 
 function createCalendarDate(year: number, month: number, day: number) {

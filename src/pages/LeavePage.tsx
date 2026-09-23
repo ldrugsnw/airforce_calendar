@@ -74,7 +74,7 @@ const LEAVE_CARD_STYLES: Record<
   },
   consolation: {
     active: 'border-amber-300 bg-amber-50',
-    activeBadge: 'bg-amber-300 text-amber-950',
+    activeBadge: 'calendar-consolation bg-amber-300',
     completed: 'border-amber-100 bg-amber-50/40',
     completedBadge: 'bg-amber-100 text-amber-700',
   },
@@ -265,6 +265,17 @@ function sortLeaveGrants(
     first: LeaveGrantWithSummary,
     second: LeaveGrantWithSummary,
   ) => compareReason(first.grant, second.grant) || first.grant.id.localeCompare(second.grant.id)
+  const compareAcquiredDate = (
+    first: LeaveGrant,
+    second: LeaveGrant,
+    direction: 'ascending' | 'descending',
+  ) => {
+    if (first.acquiredDate === null) return second.acquiredDate === null ? 0 : 1
+    if (second.acquiredDate === null) return -1
+    return direction === 'ascending'
+      ? first.acquiredDate.localeCompare(second.acquiredDate)
+      : second.acquiredDate.localeCompare(first.acquiredDate)
+  }
 
   return [...items].sort((first, second) => {
     if (sortOption === 'recommended') {
@@ -273,21 +284,21 @@ function sortLeaveGrants(
           (typeOrder.get(second.grant.type) ?? 0) ||
         Number(second.summary.availableDays > 0) -
           Number(first.summary.availableDays > 0) ||
-        first.grant.acquiredDate.localeCompare(second.grant.acquiredDate) ||
+        compareAcquiredDate(first.grant, second.grant, 'ascending') ||
         compareStable(first, second)
       )
     }
 
     if (sortOption === 'newest') {
       return (
-        second.grant.acquiredDate.localeCompare(first.grant.acquiredDate) ||
+        compareAcquiredDate(first.grant, second.grant, 'descending') ||
         compareStable(first, second)
       )
     }
 
     if (sortOption === 'oldest') {
       return (
-        first.grant.acquiredDate.localeCompare(second.grant.acquiredDate) ||
+        compareAcquiredDate(first.grant, second.grant, 'ascending') ||
         compareStable(first, second)
       )
     }
@@ -404,7 +415,7 @@ function LeaveGrantCard({ grant, summary }: LeaveGrantCardProps) {
               {grant.reason || '사유 없음'}
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              {grant.acquiredDate} 획득
+              {grant.acquiredDate ? `${grant.acquiredDate} 획득` : '획득일 미입력'}
             </p>
           </div>
           <p

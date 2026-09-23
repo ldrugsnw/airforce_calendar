@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { CalendarGrid } from '../components/CalendarGrid'
 import { CalendarLegend } from '../components/CalendarLegend'
 import { CalendarMonthHeader } from '../components/CalendarMonthHeader'
@@ -18,6 +18,7 @@ import {
   createMonthGrid,
   getCalendarMonth,
   getKstToday,
+  isCalendarDate,
   moveCalendarMonth,
   orderCalendarRange,
   type CalendarDate,
@@ -34,15 +35,19 @@ import { useAppDispatch, useAppState } from '../store/appStateContext'
 export function CalendarPage() {
   const { leaveGrants, leaveUsages, outings } = useAppState()
   const dispatch = useAppDispatch()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const today = useMemo(() => getKstToday(), [])
+  const linkedStartDate = isCalendarDate(searchParams.get('start'))
+    ? searchParams.get('start') as CalendarDate
+    : null
   const linkedLeaveUsage = leaveUsages.find(
     (usage) => usage.id === searchParams.get('usage') && !usage.canceled,
   )
   const [visibleMonth, setVisibleMonth] = useState(() =>
-    getCalendarMonth(linkedLeaveUsage?.startDate ?? today),
+    getCalendarMonth(linkedLeaveUsage?.startDate ?? linkedStartDate ?? today),
   )
-  const [startDate, setStartDate] = useState<CalendarDate | null>(null)
+  const [startDate, setStartDate] = useState<CalendarDate | null>(linkedStartDate)
   const [endDate, setEndDate] = useState<CalendarDate | null>(null)
   const [selectedLeaveUsageId, setSelectedLeaveUsageId] = useState<string | null>(
     linkedLeaveUsage?.id ?? null,
@@ -53,6 +58,7 @@ export function CalendarPage() {
   const [outingReason, setOutingReason] = useState('')
   const [editingLeaveUsageId, setEditingLeaveUsageId] = useState<string | null>(null)
   const [selectedLeaveGrantId, setSelectedLeaveGrantId] = useState('')
+  const [interactionMode, setInteractionMode] = useState<'leave' | 'outing'>('leave')
   const [formMessage, setFormMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
   const monthGrid = useMemo(() => createMonthGrid(visibleMonth), [visibleMonth])
   const legend = createCalendarLegend(
@@ -103,6 +109,7 @@ export function CalendarPage() {
     )
 
     if (savedUsage) {
+      setInteractionMode('leave')
       setSelectedLeaveUsageId(savedUsage.id)
       setSearchParams({ usage: savedUsage.id }, { replace: true })
       setEditingLeaveUsageId(null)
@@ -118,6 +125,7 @@ export function CalendarPage() {
     }
 
     if (savedOuting) {
+      setInteractionMode('outing')
       setSelectedLeaveUsageId(null)
       setSelectedOutingId(savedOuting.id)
       setEditingOutingId(null)
@@ -139,6 +147,20 @@ export function CalendarPage() {
     setOutingReason('')
     setSearchParams({}, { replace: true })
     setEditingLeaveUsageId(null)
+
+    if (interactionMode === 'outing') {
+      setStartDate(date)
+      setEndDate(null)
+      setIsOutingFormOpen(true)
+      setFormMessage(null)
+      return
+    }
+
+    if (leaveGrants.length === 0) {
+      const returnTo = `/calendar?start=${date}`
+      navigate(`/leave/new?returnTo=${encodeURIComponent(returnTo)}`)
+      return
+    }
 
     if (!startDate || endDate) {
       setStartDate(date)
@@ -393,20 +415,90 @@ export function CalendarPage() {
   return (
     <div onClick={dismissSelectedSchedule}>
       <PageHeader
-        description={'빈 날짜 한 번은 외출, 두 번은 휴가 기간을 선택해요.\n등록한 일정은 색상과 표시로 구분됩니다.'}
+        description="먼저 휴가와 외출 중 등록할 일정을 고른 뒤 날짜를 선택하세요."
         title="달력"
       />
+      <div
+        aria-label="등록할 일정 종류"
+        className="mt-6 grid grid-cols-2 rounded-2xl bg-slate-100 p-1"
+        role="group"
+      >
+        {([
+          ['leave', '휴가'],
+          ['outing', '외출'],
+        ] as const).map(([mode, label]) => (
+          <button
+            aria-pressed={interactionMode === mode}
+            className={`min-h-11 rounded-xl text-sm font-semibold transition ${
+              interactionMode === mode
+                ? 'bg-white text-brand-700 shadow-sm'
+                : 'text-slate-600'
+            }`}
+            key={mode}
+            onClick={() => {
+              setInteractionMode(mode)
+              resetLeaveUsageSelection()
+              setIsOutingFormOpen(false)
+              setOutingReason('')
+            }}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {!editingLeaveUsageId && !editingOutingId && (
+        <section
+          aria-live="polite"
+          className="mt-3 rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3"
+          onClick={(event) => event.stopPropagation()}
+        >
+          {interactionMode === 'leave' ? (
+            startDate && !endDate ? (
+              <>
+                <p className="font-bold text-brand-800">② 종료일 선택</p>
+                <p className="mt-1 text-sm leading-6 text-slate-700">
+                  시작일은 {startDate}입니다. 하루 휴가라면 같은 날을 다시 누르세요.
+                </p>
+                <button
+                  className="mt-2 min-h-10 rounded-xl border border-brand-200 bg-white px-3 text-sm font-semibold text-brand-700"
+                  onClick={resetLeaveUsageSelection}
+                  type="button"
+                >
+                  선택 취소
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="font-bold text-brand-800">① 시작일 선택</p>
+                <p className="mt-1 text-sm leading-6 text-slate-700">
+                  달력에서 휴가를 시작할 날짜를 누르세요.
+                </p>
+              </>
+            )
+          ) : (
+            <>
+              <p className="font-bold text-brand-800">외출 날짜 선택</p>
+              <p className="mt-1 text-sm leading-6 text-slate-700">
+                외출은 하루만 선택합니다. 달력에서 외출할 날짜를 누르세요.
+              </p>
+            </>
+          )}
+        </section>
+      )}
       <section
-        className="mt-8 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
+        className="mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
         onClick={(event) => event.stopPropagation()}
       >
         <CalendarMonthHeader
+          onMonthJump={setVisibleMonth}
           onNextMonth={() =>
             setVisibleMonth((month) => moveCalendarMonth(month, 1))
           }
           onPreviousMonth={() =>
             setVisibleMonth((month) => moveCalendarMonth(month, -1))
           }
+          onToday={() => setVisibleMonth(getCalendarMonth(today))}
           visibleMonth={visibleMonth}
         />
 
@@ -487,10 +579,17 @@ export function CalendarPage() {
         )}
         {!selectedLeaveUsage && !selectedOuting && !editingLeaveUsageId && !editingOutingId && !startDate && (
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            빈 날짜를 눌러 시작일과 종료일을 선택하세요. 등록된 날짜를 누르면 일정 상세를 볼 수 있어요.
+            {interactionMode === 'leave'
+              ? '휴가 시작일을 선택하세요. 등록된 날짜를 누르면 일정 상세를 볼 수 있어요.'
+              : '외출할 하루를 선택하세요. 등록된 날짜를 누르면 일정 상세를 볼 수 있어요.'}
           </p>
         )}
-        {!editingLeaveUsageId && startDate && !endDate && (
+        {interactionMode === 'leave' && !editingLeaveUsageId && startDate && !endDate && (
+          <div className="mt-2">
+            <p className="font-semibold text-slate-900">{startDate}</p>
+          </div>
+        )}
+        {interactionMode === 'outing' && !editingLeaveUsageId && startDate && !endDate && (
           <OutingFormPanel
             date={startDate}
             errorMessage={
@@ -515,7 +614,7 @@ export function CalendarPage() {
             reason={outingReason}
           />
         )}
-        {!editingLeaveUsageId && startDate && endDate && (
+        {interactionMode === 'leave' && !editingLeaveUsageId && startDate && endDate && (
           <LeaveUsageCreateForm
             endDate={endDate}
             errorMessage={

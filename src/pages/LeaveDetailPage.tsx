@@ -80,7 +80,10 @@ export function LeaveDetailPage() {
           </p>
         </div>
         <dl className="divide-y divide-slate-100 px-6">
-          <DetailRow label="획득 날짜" value={currentLeaveGrant.acquiredDate} />
+          <DetailRow
+            label="획득 날짜"
+            value={currentLeaveGrant.acquiredDate ?? '획득일 미입력'}
+          />
           <DetailRow
             label="획득 사유"
             value={currentLeaveGrant.reason || '사유 없음'}

@@ -35,9 +35,15 @@ describe('홈 다음 휴가', () => {
     render(<MemoryRouter initialEntries={['/']}><App /></MemoryRouter>)
 
     expect(screen.getByText('다음 휴가까지 D-2')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('2026년 8월 8일 ~ 2026년 8월 12일')
+    expect(screen.getByRole('heading', { name: '2026년 8월 8일 ~ 2026년 8월 12일' })).toBeInTheDocument()
     expect(screen.getByText('총 5일')).toBeInTheDocument()
     expect(screen.getByText('연가 3일 + 위로휴가 2일')).toBeInTheDocument()
+    expect(screen.getByText('2026년 5월 28일 ~ 2026년 10월 14일')).toBeInTheDocument()
+    expect(screen.getAllByRole('gridcell')).toHaveLength(140)
+    expect(screen.getByRole('gridcell', { name: '2026년 5월 28일, 휴가 없음' })).toBeInTheDocument()
+    expect(screen.getByRole('gridcell', { name: '2026년 10월 14일, 휴가 없음' })).toBeInTheDocument()
+    expect(screen.queryByRole('gridcell', { name: /2026년 10월 15일/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('gridcell', { name: /2026년 8월 8일, 연가, 사용 예정/ })).toBeInTheDocument()
 
     vi.useRealTimers()
   })

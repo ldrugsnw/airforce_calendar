@@ -1,4 +1,10 @@
-import { isLeaveType, type LeaveGrant } from '../domain/leave'
+import {
+  MAX_LEAVE_GRANT_DAYS,
+  MAX_LEAVE_MEMO_LENGTH,
+  MAX_LEAVE_REASON_LENGTH,
+  isLeaveType,
+  type LeaveGrant,
+} from '../domain/leave'
 import { isCalendarDate } from '../domain/calendarDate'
 import type { LeaveUsage } from '../domain/leaveUsage'
 import type { Outing } from '../domain/outing'
@@ -33,9 +39,12 @@ function isLeaveGrant(value: unknown): value is LeaveGrant {
     typeof leaveGrant.days === 'number' &&
     Number.isInteger(leaveGrant.days) &&
     leaveGrant.days > 0 &&
-    typeof leaveGrant.acquiredDate === 'string' &&
+    leaveGrant.days <= MAX_LEAVE_GRANT_DAYS &&
+    (leaveGrant.acquiredDate === null || isCalendarDate(leaveGrant.acquiredDate)) &&
     typeof leaveGrant.reason === 'string' &&
+    leaveGrant.reason.length <= MAX_LEAVE_REASON_LENGTH &&
     typeof leaveGrant.memo === 'string' &&
+    leaveGrant.memo.length <= MAX_LEAVE_MEMO_LENGTH &&
     typeof leaveGrant.createdAt === 'string' &&
     typeof leaveGrant.updatedAt === 'string'
   )
@@ -69,6 +78,7 @@ function isOuting(value: unknown): value is Outing {
     isCalendarDate(outing.date) &&
     typeof outing.reason === 'string' &&
     outing.reason.trim().length > 0 &&
+    outing.reason.length <= 100 &&
     typeof outing.canceled === 'boolean' &&
     (outing.canceledAt === null || typeof outing.canceledAt === 'string') &&
     typeof outing.createdAt === 'string' &&

@@ -13,17 +13,97 @@ async function clickAndFlush(button: HTMLElement) {
 }
 
 describe('월간 달력', () => {
+  it('제목에서 연도와 월만 선택해 이동하고 선택 중인 휴가 시작일을 유지한다', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-05T15:00:00.000Z'))
+    saveAppState({
+      leaveGrants: [{
+        id: 'month-jump', type: 'annual', days: 365, acquiredDate: null,
+        reason: '', memo: '', createdAt: '', updatedAt: '',
+      }],
+      leaveUsages: [],
+      outings: [],
+    })
+    render(<MemoryRouter initialEntries={['/calendar']}><App /></MemoryRouter>)
+
+    expect(screen.queryByLabelText('날짜로 이동')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '2026년 8월 12일' }))
+    fireEvent.click(screen.getByRole('button', { name: '2026년 8월, 연도와 월 선택' }))
+    fireEvent.change(screen.getByLabelText('연도'), { target: { value: '2027' } })
+    fireEvent.click(screen.getByRole('button', { name: '3월' }))
+
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('2027년 3월')
+    expect(screen.getByText('② 종료일 선택')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '오늘' }))
+    expect(screen.getByRole('button', { name: '2026년 8월 12일' })).toHaveAttribute('aria-pressed', 'true')
+    vi.useRealTimers()
+  })
+
+  it('단계 안내를 모드 선택과 달력 사이의 같은 위치에서 바꾼다', () => {
+    const leaveGrant: LeaveGrant = {
+      id: 'leave-guide', type: 'annual', days: 2, acquiredDate: null,
+      reason: '', memo: '', createdAt: '', updatedAt: '',
+    }
+    saveAppState({ leaveGrants: [leaveGrant], leaveUsages: [], outings: [] })
+    render(<MemoryRouter initialEntries={['/calendar']}><App /></MemoryRouter>)
+
+    const modeButtons = screen.getByRole('group', { name: '등록할 일정 종류' })
+    const firstCalendarDate = screen.getAllByRole('button').find((button) =>
+      /^\d{4}년 \d{1,2}월 \d{1,2}일/.test(button.getAttribute('aria-label') ?? ''),
+    )
+    if (!firstCalendarDate) throw new Error('달력 날짜 버튼을 찾지 못했습니다.')
+    const firstStep = screen.getByText('① 시작일 선택')
+    expect(modeButtons.compareDocumentPosition(firstStep) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(firstStep.compareDocumentPosition(firstCalendarDate) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    const date = screen.getAllByRole('button').find((button) =>
+      /^\d{4}년 \d{1,2}월 8일$/.test(button.getAttribute('aria-label') ?? ''),
+    )
+    if (!date) throw new Error('테스트할 날짜 버튼을 찾지 못했습니다.')
+    fireEvent.click(date)
+    expect(screen.getByText('② 종료일 선택')).toBeInTheDocument()
+    expect(screen.getByText(/하루 휴가라면 같은 날을 다시 누르세요/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '외출' }))
+    expect(screen.getByText('외출 날짜 선택')).toBeInTheDocument()
+    expect(screen.getByText(/외출은 하루만 선택합니다/)).toBeInTheDocument()
+  })
+
+  it('보유 휴가가 없으면 등록 후 선택한 날짜로 복귀한다', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-05T15:00:00.000Z'))
+    render(<MemoryRouter initialEntries={['/calendar']}><App /></MemoryRouter>)
+
+    fireEvent.click(screen.getByRole('button', { name: '2026년 8월 12일' }))
+    expect(screen.getByRole('heading', { name: '보유 휴가 추가' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('radio', { name: '연가' }))
+    fireEvent.click(screen.getByRole('button', { name: '획득 일수 1일 늘리기' }))
+    await clickAndFlush(screen.getByRole('button', { name: '저장' }))
+
+    expect(screen.getByRole('heading', { name: '달력', level: 1 })).toBeInTheDocument()
+    expect(screen.getByText('② 종료일 선택')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '2026년 8월 12일' })).toHaveAttribute('aria-pressed', 'true')
+    vi.useRealTimers()
+  })
+
   it('월을 이동하고 두 날짜를 이른 순서로 선택해 포함 일수를 보여준다', () => {
+    saveAppState({
+      leaveGrants: [{
+        id: 'grant', type: 'annual', days: 10, acquiredDate: null, reason: '', memo: '',
+        createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+      }],
+      leaveUsages: [],
+      outings: [],
+    })
     render(
       <MemoryRouter initialEntries={['/calendar']}>
         <App />
       </MemoryRouter>,
     )
 
-    const calendarDescription = screen.getByText(/빈 날짜 한 번은 외출/)
-    expect(calendarDescription).toHaveClass('whitespace-pre-line')
+    const calendarDescription = screen.getByText(/먼저 휴가와 외출/)
     expect(calendarDescription).toHaveTextContent(
-      '빈 날짜 한 번은 외출, 두 번은 휴가 기간을 선택해요. 등록한 일정은 색상과 표시로 구분됩니다.',
+      '먼저 휴가와 외출 중 등록할 일정을 고른 뒤 날짜를 선택하세요.',
     )
 
     const currentMonth = screen.getByRole('heading', { level: 2 }).textContent
@@ -55,13 +135,9 @@ describe('월간 달력', () => {
 
     render(<MemoryRouter initialEntries={['/calendar']}><App /></MemoryRouter>)
 
+    fireEvent.click(screen.getByRole('button', { name: '외출' }))
     const outingDate = screen.getByRole('button', { name: '2026년 8월 12일' })
     fireEvent.click(outingDate)
-
-    expect(
-      screen.getByRole('button', { name: '8월 12일 외출 등록' }),
-    ).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: '8월 12일 외출 등록' }))
     fireEvent.change(screen.getByLabelText('외출 사유'), {
       target: { value: '개인 용무' },
     })
@@ -72,7 +148,7 @@ describe('월간 달력', () => {
     )
     expect(outingDate).toHaveAccessibleName(/외출/)
     expect(outingDate.querySelector('.bg-orange-500')).toBeInTheDocument()
-    expect(screen.getByText('외출')).toBeInTheDocument()
+    expect(screen.getAllByText('외출').length).toBeGreaterThan(0)
 
     fireEvent.click(outingDate)
     expect(screen.getByText('등록된 외출 일정')).toBeInTheDocument()
@@ -171,7 +247,7 @@ describe('월간 달력', () => {
 
     fireEvent.click(screen.getByRole('heading', { name: '달력', level: 1 }))
     expect(screen.queryByText('등록된 휴가 일정')).not.toBeInTheDocument()
-    expect(screen.getByText(/빈 날짜를 눌러 시작일과 종료일/)).toBeInTheDocument()
+    expect(screen.getByText(/휴가 시작일을 선택/)).toBeInTheDocument()
 
     fireEvent.click(eighth)
 

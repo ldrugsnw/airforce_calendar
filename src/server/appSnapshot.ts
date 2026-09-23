@@ -1,5 +1,10 @@
 import { isCalendarDate } from '../domain/calendarDate'
-import { isLeaveType } from '../domain/leave'
+import {
+  MAX_LEAVE_GRANT_DAYS,
+  MAX_LEAVE_MEMO_LENGTH,
+  MAX_LEAVE_REASON_LENGTH,
+  isLeaveType,
+} from '../domain/leave'
 import type { AppState } from '../store/appReducer'
 
 export type AccountSnapshot = {
@@ -56,10 +61,15 @@ export function isAppSnapshot(value: unknown): value is AppSnapshot {
         isRecord(item) &&
         typeof item.id === 'string' &&
         isLeaveType(item.type) &&
+        typeof item.days === 'number' &&
         Number.isInteger(item.days) &&
-        typeof item.acquiredDate === 'string' &&
+        item.days >= 1 &&
+        item.days <= MAX_LEAVE_GRANT_DAYS &&
+        (item.acquiredDate === null || isCalendarDate(item.acquiredDate)) &&
         typeof item.reason === 'string' &&
+        item.reason.length <= MAX_LEAVE_REASON_LENGTH &&
         typeof item.memo === 'string' &&
+        item.memo.length <= MAX_LEAVE_MEMO_LENGTH &&
         Number.isInteger(item.revision),
     ) &&
     Array.isArray(value.leaveUsages) &&
@@ -80,6 +90,7 @@ export function isAppSnapshot(value: unknown): value is AppSnapshot {
         typeof item.id === 'string' &&
         isCalendarDate(item.date) &&
         typeof item.reason === 'string' &&
+        item.reason.length <= 100 &&
         typeof item.canceled === 'boolean' &&
         Number.isInteger(item.revision),
     )

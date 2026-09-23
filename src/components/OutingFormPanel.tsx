@@ -1,4 +1,10 @@
-import { formatCalendarDate, type CalendarDate } from '../domain/calendarDate'
+import {
+  formatCalendarDate,
+  MAX_CALENDAR_DATE,
+  MIN_CALENDAR_DATE,
+  type CalendarDate,
+} from '../domain/calendarDate'
+import { MAX_OUTING_REASON_LENGTH } from '../domain/outing'
 
 type OutingFormPanelProps = {
   date: CalendarDate
@@ -52,6 +58,8 @@ export function OutingFormPanel({
               <input
                 className="calendar-date-input calendar-date-input-centered mt-2 h-14 w-full rounded-2xl border border-slate-300 bg-white px-4 text-base font-normal text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
                 id="outing-date"
+                max={MAX_CALENDAR_DATE}
+                min={MIN_CALENDAR_DATE}
                 onChange={(event) => {
                   if (event.target.value) {
                     onDateChange(event.target.value as CalendarDate)
@@ -71,6 +79,7 @@ export function OutingFormPanel({
               autoFocus={!isEditing}
               className={`${isEditing ? 'mt-4' : 'mt-2'} h-14 w-full rounded-2xl border border-slate-300 bg-white px-4 text-base font-normal text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100`}
               id="outing-reason"
+              maxLength={MAX_OUTING_REASON_LENGTH}
               onChange={(event) => onReasonChange(event.target.value)}
               placeholder="예: 개인 용무"
               type="text"

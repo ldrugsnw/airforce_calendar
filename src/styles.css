@@ -34,6 +34,10 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
+.calendar-consolation {
+  color: #422006;
+}
+
 :focus-visible {
   outline: 2px solid var(--color-brand-500);
   outline-offset: 2px;
@@ -104,6 +108,10 @@ a {
 
   body {
     background: var(--dark-canvas);
+  }
+
+  .calendar-consolation {
+    color: #422006;
   }
 
   :focus-visible {

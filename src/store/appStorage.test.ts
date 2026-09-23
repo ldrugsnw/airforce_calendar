@@ -24,6 +24,30 @@ describe('앱 상태 브라우저 저장', () => {
     })
   })
 
+  it('획득일이 없거나 미래인 휴가를 복원한다', () => {
+    const grants: LeaveGrant[] = [
+      { ...leaveGrant, id: 'no-date', acquiredDate: null },
+      { ...leaveGrant, id: 'future-date', acquiredDate: '2999-12-31' },
+    ]
+    saveAppState({ leaveGrants: grants, leaveUsages: [], outings: [] })
+
+    expect(loadAppState().leaveGrants).toEqual(grants)
+  })
+
+  it('획득 일수와 날짜 상한을 벗어난 저장 데이터를 거절한다', () => {
+    localStorage.setItem(
+      APP_STORAGE_KEY,
+      JSON.stringify({
+        version: 3,
+        leaveGrants: [{ ...leaveGrant, days: 366, acquiredDate: '3000-01-01' }],
+        leaveUsages: [],
+        outings: [],
+      }),
+    )
+
+    expect(loadAppState().leaveGrants).toEqual([])
+  })
+
   it('공가 보유 휴가를 유효한 형식으로 복원한다', () => {
     const officialLeaveGrant: LeaveGrant = {
       ...leaveGrant,
