@@ -29,7 +29,21 @@ export function HomePage() {
         description="다음 휴가와 사용할 수 있는 휴가를 빠르게 확인하세요."
         title="홈"
       />
-      {hasCurrentOrNextSchedule ? (
+      {leaveGrants.length === 0 ? (
+        <>
+          <EmptyState
+            description="획득한 휴가를 등록하면 보유 휴가와 사용 일정을 관리할 수 있어요."
+            eyebrow="첫 단계"
+            title="보유 휴가를 등록하고 관리를 시작해보세요"
+          />
+          <Link
+            className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm"
+            to="/leave/new"
+          >
+            보유 휴가 등록하기
+          </Link>
+        </>
+      ) : hasCurrentOrNextSchedule ? (
         <div className="mt-8 space-y-5">
           {currentSchedule && (
             <HomeScheduleCard
@@ -63,7 +77,9 @@ export function HomePage() {
           </Link>
         </>
       )}
-      <LeaveHeatmap grants={leaveGrants} today={today} usages={leaveUsages} />
+      {leaveGrants.length > 0 && (
+        <LeaveHeatmap grants={leaveGrants} today={today} usages={leaveUsages} />
+      )}
     </>
   )
 }

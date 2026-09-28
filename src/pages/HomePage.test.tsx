@@ -6,6 +6,33 @@ import type { LeaveUsage } from '../domain/leaveUsage'
 import { saveAppState } from '../store/appStorage'
 
 describe('홈 다음 휴가', () => {
+  it('보유 휴가가 없으면 휴가 등록을 안내하고 달력 계획과 20주 흐름은 숨긴다', () => {
+    saveAppState({ leaveGrants: [], leaveUsages: [], outings: [] })
+
+    render(<MemoryRouter initialEntries={['/']}><App /></MemoryRouter>)
+
+    expect(screen.getByText('보유 휴가를 등록하고 관리를 시작해보세요')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '보유 휴가 등록하기' })).toHaveAttribute('href', '/leave/new')
+    expect(screen.queryByText('준비 완료')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '달력에서 휴가 계획하기' })).not.toBeInTheDocument()
+    expect(screen.queryByText('휴가 20주 흐름')).not.toBeInTheDocument()
+  })
+
+  it('보유 휴가는 있지만 일정이 없으면 기존 빈 일정 안내와 20주 흐름을 유지한다', () => {
+    const leaveGrant: LeaveGrant = {
+      id: 'annual', type: 'annual', days: 5, acquiredDate: '2026-08-01', reason: '정기 연가', memo: '',
+      createdAt: '2026-08-01T00:00:00.000Z', updatedAt: '2026-08-01T00:00:00.000Z',
+    }
+    saveAppState({ leaveGrants: [leaveGrant], leaveUsages: [], outings: [] })
+
+    render(<MemoryRouter initialEntries={['/']}><App /></MemoryRouter>)
+
+    expect(screen.getByText('준비 완료')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '달력에서 휴가 계획하기' })).toHaveAttribute('href', '/calendar')
+    expect(screen.getByText('휴가 20주 흐름')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '보유 휴가 등록하기' })).not.toBeInTheDocument()
+  })
+
   it('가장 가까운 연속 일정의 D-day와 전체 구성을 보여준다', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-08-05T15:00:00.000Z'))
