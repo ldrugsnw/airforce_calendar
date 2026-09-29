@@ -34,6 +34,69 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
+.onboarding-hero-layout {
+  display: grid;
+  grid-template-areas:
+    "copy"
+    "visual"
+    "actions";
+  grid-template-rows: auto minmax(14rem, 1fr) auto;
+  gap: 1rem;
+}
+
+.onboarding-hero-copy {
+  grid-area: copy;
+}
+
+.onboarding-hero-visual {
+  grid-area: visual;
+}
+
+.onboarding-hero-actions {
+  grid-area: actions;
+}
+
+.onboarding-float {
+  animation: onboarding-float 5s ease-in-out infinite;
+}
+
+.onboarding-float-delay-1 {
+  animation-delay: -1.7s;
+}
+
+.onboarding-float-delay-2 {
+  animation-delay: -3.4s;
+}
+
+@keyframes onboarding-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@media (min-width: 64rem) {
+  .onboarding-hero-layout {
+    grid-template-areas:
+      "copy visual"
+      "actions visual";
+    grid-template-columns: minmax(0, 0.9fr) minmax(26rem, 1.1fr);
+    grid-template-rows: 1fr 1fr;
+    column-gap: 5rem;
+    row-gap: 1.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-float {
+    animation: none;
+  }
+}
+
 .calendar-consolation {
   color: #422006;
 }
