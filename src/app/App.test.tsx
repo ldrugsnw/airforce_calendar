@@ -49,7 +49,7 @@ describe('앱 기본 화면 이동', () => {
     expect(screen.queryByRole('heading', { name: '현재 공군에서 복무 중인가요?' })).not.toBeInTheDocument()
   })
 
-  it('공군 시작을 저장하고 새로고침 후 설정 안내 상태를 복원한다', () => {
+  it('공군 시작을 저장하고 새로고침 후 기본 휴가 검토를 복원한다', () => {
     const { unmount } = render(<MemoryRouter><App /></MemoryRouter>)
     fireEvent.click(screen.getByRole('button', { name: '공군으로 시작하기' }))
 
@@ -58,13 +58,13 @@ describe('앱 기본 화면 이동', () => {
       branch: 'air_force',
       leaveSetupCompletedAt: null,
     })
-    expect(screen.getByRole('heading', { name: '공군으로 설정했어요' })).toBeInTheDocument()
-    expect(screen.getByText('다음 단계에서 기본 휴가를 설정합니다.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '기본 휴가를 확인해주세요' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: '연가 포함' })).toBeChecked()
     expect(screen.queryByRole('navigation', { name: '주요 화면' })).not.toBeInTheDocument()
 
     unmount()
     render(<MemoryRouter><App /></MemoryRouter>)
-    expect(screen.getByRole('heading', { name: '공군으로 설정했어요' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '기본 휴가를 확인해주세요' })).toBeInTheDocument()
   })
 
   it('Supabase 모드에서는 로컬 신규 사용자여도 온보딩 gate를 적용하지 않는다', async () => {
