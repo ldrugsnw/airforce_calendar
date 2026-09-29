@@ -35,19 +35,24 @@ export function saveMigrationBackup(userId: string, data: unknown) {
 }
 
 export function removeExpiredMigrationBackups() {
-  const now = new Date().toISOString()
-  for (let index = localStorage.length - 1; index >= 0; index -= 1) {
-    const key = localStorage.key(index)
-    if (!key?.startsWith(MIGRATION_BACKUP_PREFIX)) continue
-    try {
-      const value = JSON.parse(localStorage.getItem(key) ?? '{}') as {
-        expiresAt?: unknown
-      }
-      if (typeof value.expiresAt !== 'string' || value.expiresAt <= now) {
+  try {
+    const now = new Date().toISOString()
+    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+      const key = localStorage.key(index)
+      if (!key?.startsWith(MIGRATION_BACKUP_PREFIX)) continue
+      try {
+        const value = JSON.parse(localStorage.getItem(key) ?? '{}') as {
+          expiresAt?: unknown
+        }
+        if (typeof value.expiresAt !== 'string' || value.expiresAt <= now) {
+          localStorage.removeItem(key)
+        }
+      } catch {
         localStorage.removeItem(key)
       }
-    } catch {
-      localStorage.removeItem(key)
     }
+  } catch {
+    // Storage can be unavailable in restricted browser contexts. Cache cleanup
+    // must not prevent the application from rendering.
   }
 }
