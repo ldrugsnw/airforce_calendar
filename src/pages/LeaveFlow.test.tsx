@@ -2,8 +2,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { App } from '../app/App'
 import { APP_STORAGE_KEY } from '../store/appStorage'
+import { saveAppState } from '../store/appStorage'
 
 describe('보유 휴가 등록 흐름', () => {
+  beforeEach(() => saveAppState({ leaveGrants: [], leaveUsages: [], outings: [] }))
+
   it('입력한 보유 휴가를 목록과 브라우저 저장소에 반영한다', async () => {
     render(
       <MemoryRouter initialEntries={['/leave']}>

@@ -13,6 +13,8 @@ async function clickAndFlush(button: HTMLElement) {
 }
 
 describe('월간 달력', () => {
+  beforeEach(() => saveAppState({ leaveGrants: [], leaveUsages: [], outings: [] }))
+
   it('제목에서 연도와 월만 선택해 이동하고 선택 중인 휴가 시작일을 유지한다', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-08-05T15:00:00.000Z'))

@@ -17,6 +17,8 @@ const leaveGrant: LeaveGrant = {
 }
 
 describe('보유 휴가 상세·수정·삭제 흐름', () => {
+  beforeEach(() => saveAppState({ leaveGrants: [], leaveUsages: [], outings: [] }))
+
   it('상세에 날짜 기준 완료·예정·사용 가능 합계를 표시한다', () => {
     const summaryGrant = { ...leaveGrant, days: 5 }
     const leaveUsages: LeaveUsage[] = [
