@@ -1,7 +1,7 @@
 import { isAppSnapshot, type AppSnapshot } from './appSnapshot'
 
-const CACHE_PREFIX = 'airforce-calendar:server-cache:'
-const MIGRATION_BACKUP_PREFIX = 'airforce-calendar:migration-backup:'
+export const CACHE_PREFIX = 'airforce-calendar:server-cache:'
+export const MIGRATION_BACKUP_PREFIX = 'airforce-calendar:migration-backup:'
 const MIGRATION_BACKUP_DAYS = 7
 
 export function loadServerCache(userId: string): AppSnapshot | null {

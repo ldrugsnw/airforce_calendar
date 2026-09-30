@@ -9,6 +9,7 @@ import { isCalendarDate } from '../domain/calendarDate'
 import type { LeaveUsage } from '../domain/leaveUsage'
 import type { Outing } from '../domain/outing'
 import { initialAppState, type AppState } from './appReducer'
+import { CACHE_PREFIX, MIGRATION_BACKUP_PREFIX } from '../server/appCache'
 
 export const APP_STORAGE_KEY = 'airforce-calendar:data'
 export const ONBOARDING_STORAGE_KEY = 'airforce-calendar:onboarding'
@@ -234,4 +235,21 @@ export function getLocalDataForMigration(): StoredAppData | null {
 
 export function clearLocalAppData() {
   localStorage.removeItem(APP_STORAGE_KEY)
+}
+
+export function resetLocalTestData(): boolean {
+  try {
+    const storage = window.localStorage
+    const keys = [APP_STORAGE_KEY, ONBOARDING_STORAGE_KEY]
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index)
+      if (key?.startsWith(CACHE_PREFIX) || key?.startsWith(MIGRATION_BACKUP_PREFIX)) {
+        keys.push(key)
+      }
+    }
+    for (const key of keys) storage.removeItem(key)
+    return true
+  } catch {
+    return false
+  }
 }
