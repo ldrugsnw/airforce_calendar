@@ -96,13 +96,13 @@ describe('앱 기본 화면 이동', () => {
       branch: 'air_force',
       leaveSetupCompletedAt: null,
     })
-    expect(screen.getByRole('heading', { name: '현재 보유 휴가를 등록해주세요' })).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: '연가 포함' })).toBeChecked()
+    expect(screen.getByRole('heading', { name: '지금 가지고 있는 휴가를 알려주세요' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: '연가 등록' })).toBeChecked()
     expect(screen.queryByRole('navigation', { name: '주요 화면' })).not.toBeInTheDocument()
 
     unmount()
     render(<MemoryRouter><App /></MemoryRouter>)
-    expect(screen.getByRole('heading', { name: '현재 보유 휴가를 등록해주세요' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '지금 가지고 있는 휴가를 알려주세요' })).toBeInTheDocument()
   })
 
   it('Supabase 모드에서는 로컬 신규 사용자여도 온보딩 gate를 적용하지 않는다', async () => {

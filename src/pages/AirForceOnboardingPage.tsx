@@ -89,7 +89,10 @@ export function AirForceOnboardingPage({
     event.preventDefault()
     if (submitting.current) return
 
-    if (!hasValidSelection) return
+    if (!hasValidSelection) {
+      setItems((current) => current.map((item) => item.included ? { ...item, touched: true } : item))
+      return
+    }
 
     submitting.current = true
     setIsSaving(true)
@@ -238,23 +241,42 @@ export function AirForceOnboardingPage({
           </section>
         ) : (
           <>
-            <header className="pb-7">
-              <p className="text-sm font-semibold text-brand-600">공군 휴가 캘린더 · 기본 설정</p>
-              <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">현재 보유 휴가를 등록해주세요</h1>
+            <header className="pb-6">
+              <div className="flex items-center gap-2">
+                <button
+                  aria-label="이전 단계로 돌아가기"
+                  className="inline-flex size-12 shrink-0 items-center justify-center rounded-2xl text-slate-600 transition-[background-color,color,transform] duration-150 ease-out hover:bg-slate-100 hover:text-slate-950 active:scale-95 active:bg-slate-200 motion-reduce:transform-none motion-reduce:transition-none"
+                  disabled={isSaving}
+                  onClick={() => {
+                    setBranchSelected(false)
+                    setError(null)
+                  }}
+                  type="button"
+                >
+                  <svg aria-hidden="true" className="size-6 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m15 18-6-6 6-6" />
+                  </svg>
+                </button>
+                <p className="inline-flex items-center gap-2 text-sm font-medium text-brand-600">
+                  <span aria-hidden="true" className="size-1.5 rounded-full bg-blue-400" />
+                  2/3 · 보유 휴가
+                </p>
+              </div>
+              <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">지금 가지고 있는 휴가를 알려주세요</h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">
-                지금 등록해두면 남은 휴가와 사용 계획을 바로 확인할 수 있어요.
+                먼저 보유 휴가를 등록하면 남은 휴가와 사용할 일정을 계산해드려요.
               </p>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                나중에 내 휴가에서 언제든 수정할 수 있습니다.
+                정확하지 않아도 괜찮아요. 나중에 언제든 수정할 수 있어요.
               </p>
             </header>
 
             <form className="flex flex-1 flex-col" noValidate onSubmit={handleSubmit}>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {items.map((item) => {
                   const visibleError = item.touched ? getDaysError(item) : null
                   return (
-                  <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" key={item.type}>
+                  <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" key={item.type}>
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <h2 className="text-lg font-bold text-slate-950">{item.label}</h2>
@@ -262,33 +284,27 @@ export function AirForceOnboardingPage({
                       </div>
                       <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl px-2 text-sm font-semibold text-slate-700">
                         <input
-                          aria-label={`${item.label} 포함`}
+                          aria-label={`${item.label} 등록`}
                           checked={item.included}
                           className="h-5 w-5 accent-brand-600"
                           onChange={(event) => changeItem(item.type, { included: event.target.checked })}
                           type="checkbox"
                         />
-                        포함
+                        등록
                       </label>
                     </div>
                     {item.included && (
                       <>
-                      <div className="mt-5 grid grid-cols-[3.5rem_1fr_3.5rem] gap-2">
-                        <button
-                          aria-label={`${item.label} 일수 줄이기`}
-                          className="min-h-14 rounded-xl border border-slate-300 bg-white text-xl font-bold text-slate-700 active:bg-slate-100"
-                          onClick={() => changeDays(item.type, String(Math.max(0, (Number(item.days) || 0) - 1)))}
-                          type="button"
-                        >−</button>
-                        <div className="relative">
+                      <div className="relative mt-3">
                           <input
                             aria-label={`${item.label} 보유 일수`}
-                            aria-describedby={`${item.type}-days-error`}
+                            aria-describedby={visibleError ? `${item.type}-days-error` : undefined}
                             aria-invalid={Boolean(visibleError)}
-                            className={`h-14 w-full rounded-xl border bg-white px-4 pr-12 text-base text-slate-950 outline-none focus:ring-2 ${visibleError ? 'border-red-400 focus:border-red-500 focus:ring-red-100' : 'border-slate-300 focus:border-brand-500 focus:ring-brand-100'}`}
+                            className={`h-12 w-full rounded-xl border bg-white px-4 pr-12 text-base text-slate-950 outline-none focus:ring-2 ${visibleError ? 'border-red-400 focus:border-red-500 focus:ring-red-100' : 'border-slate-300 focus:border-brand-500 focus:ring-brand-100'}`}
                             inputMode="numeric"
                             max={MAX_LEAVE_GRANT_DAYS}
-                            min="0"
+                            min={MIN_LEAVE_GRANT_DAYS}
+                            step="1"
                             onBlur={() => touchDays(item.type)}
                             onChange={(event) => changeDays(item.type, event.target.value)}
                             placeholder="일수 입력"
@@ -296,21 +312,16 @@ export function AirForceOnboardingPage({
                             value={item.days}
                           />
                           <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-slate-500">일</span>
-                        </div>
-                        <button
-                          aria-label={`${item.label} 일수 늘리기`}
-                          className="min-h-14 rounded-xl border border-slate-300 bg-white text-xl font-bold text-slate-700 active:bg-slate-100"
-                          onClick={() => changeDays(item.type, String(Math.min(MAX_LEAVE_GRANT_DAYS, (Number(item.days) || 0) + 1)))}
-                          type="button"
-                        >+</button>
                       </div>
+                      {visibleError && (
                       <p
-                        className="mt-2 min-h-[4.5rem] text-sm leading-6 text-red-600"
+                        className="mt-2 text-sm leading-6 text-red-600"
                         id={`${item.type}-days-error`}
-                        role={visibleError ? 'alert' : undefined}
+                        role="alert"
                       >
-                        {visibleError ?? '\u00a0'}
+                        {visibleError}
                       </p>
+                      )}
                       </>
                     )}
                   </section>
@@ -322,10 +333,10 @@ export function AirForceOnboardingPage({
               <div className="mt-auto pt-8">
                 <button
                   className="min-h-14 w-full rounded-xl bg-brand-600 px-5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:cursor-wait disabled:opacity-60"
-                  disabled={isSaving || !hasValidSelection}
+                  disabled={isSaving || selectedItems.length === 0}
                   type="submit"
                 >
-                  {isSaving ? '저장 중…' : '휴가 설정 저장하기'}
+                  {isSaving ? '저장 중…' : '이 휴가로 시작하기'}
                 </button>
               </div>
             </form>
