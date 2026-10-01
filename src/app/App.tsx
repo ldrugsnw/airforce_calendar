@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { AuthProvider } from '../auth/AuthProvider'
 import { useAuth } from '../auth/authContext'
@@ -26,13 +27,16 @@ function LoadingScreen({ message = '데이터를 불러오는 중입니다…' }
 
 function AuthenticatedRoutes() {
   const runtime = useAppRuntime()
-  useLocation()
-  if (!isServerMode) {
-    const onboarding = loadOnboardingState()
-    const shouldShowOnboarding =
-      (onboarding?.branch === 'air_force' && onboarding.leaveSetupCompletedAt === null) ||
-      (!hasValidExistingAppData() && isNewLocalUser())
-    if (shouldShowOnboarding) return <AirForceOnboardingPage initialState={onboarding} />
+  const location = useLocation()
+  const onboarding = isServerMode ? null : loadOnboardingState()
+  const shouldShowOnboarding = !isServerMode && (
+    (onboarding?.branch === 'air_force' && onboarding.leaveSetupCompletedAt === null) ||
+    (!hasValidExistingAppData() && isNewLocalUser())
+  )
+  // Keep the active flow mounted through saves until the user navigates away.
+  const [onboardingLocationKey] = useState(() => shouldShowOnboarding ? location.key : null)
+  if (shouldShowOnboarding || onboardingLocationKey === location.key) {
+    return <AirForceOnboardingPage initialState={onboarding} />
   }
   if (runtime.status === 'loading') return <LoadingScreen />
   if (runtime.status === 'error') {

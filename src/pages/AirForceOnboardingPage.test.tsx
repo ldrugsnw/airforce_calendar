@@ -209,6 +209,101 @@ describe('공군 기본 휴가 검토', () => {
     expect(saved.leaveGrants[0].id).toBe('air-force-onboarding-annual')
   })
 
+  it.each(['연가·성과제 일수 수정하기', '이전 단계로 돌아가기'])('%s로 입력 단계에 돌아가 수정 후 완료해도 기존 휴가를 갱신한다', async (buttonName) => {
+    renderLeaveReview()
+    fireEvent.change(screen.getByRole('spinbutton', { name: '연가 보유 일수' }), { target: { value: '24' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: '성과제 등록' }))
+    fireEvent.change(screen.getByRole('spinbutton', { name: '성과제 보유 일수' }), { target: { value: '7' } })
+    fireEvent.click(screen.getByRole('button', { name: '이 휴가로 시작하기' }))
+    await screen.findByRole('heading', { name: '기본 휴가 설정을 완료했어요' })
+    const before = JSON.parse(localStorage.getItem(APP_STORAGE_KEY) ?? 'null')
+
+    fireEvent.click(screen.getByRole('button', { name: buttonName }))
+    expect(screen.getByText('2/3 · 보유 휴가')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: '연가 등록' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: '성과제 등록' })).toBeChecked()
+    expect(screen.getByRole('spinbutton', { name: '연가 보유 일수' })).toHaveValue(24)
+    expect(screen.getByRole('spinbutton', { name: '성과제 보유 일수' })).toHaveValue(7)
+    expect(JSON.parse(localStorage.getItem(APP_STORAGE_KEY) ?? 'null')).toEqual(before)
+
+    // The introduction round trip must preserve the completed form too.
+    fireEvent.click(screen.getByRole('button', { name: '이전 단계로 돌아가기' }))
+    fireEvent.click(screen.getByRole('button', { name: '내 휴가 설정하기' }))
+    expect(screen.getByRole('spinbutton', { name: '연가 보유 일수' })).toHaveValue(24)
+    expect(screen.getByRole('spinbutton', { name: '성과제 보유 일수' })).toHaveValue(7)
+    fireEvent.change(screen.getByRole('spinbutton', { name: '연가 보유 일수' }), { target: { value: '20' } })
+    fireEvent.change(screen.getByRole('spinbutton', { name: '성과제 보유 일수' }), { target: { value: '5' } })
+    const submit = screen.getByRole('button', { name: '이 휴가로 시작하기' })
+    fireEvent.click(submit)
+    fireEvent.click(submit)
+    await screen.findByRole('heading', { name: '기본 휴가 설정을 완료했어요' })
+    expect(screen.getByText('20일')).toBeInTheDocument()
+    expect(screen.getByText('5일')).toBeInTheDocument()
+    const after = JSON.parse(localStorage.getItem(APP_STORAGE_KEY) ?? 'null')
+    expect(after.leaveGrants).toHaveLength(2)
+    expect(after.leaveGrants).toEqual(before.leaveGrants.map((grant: { type: string }) => ({
+      ...grant,
+      days: grant.type === 'annual' ? 20 : 5,
+      updatedAt: expect.any(String),
+    })))
+
+    fireEvent.click(screen.getByRole('button', { name: buttonName }))
+    fireEvent.click(screen.getByRole('button', { name: '이 휴가로 시작하기' }))
+    await screen.findByRole('heading', { name: '기본 휴가 설정을 완료했어요' })
+    expect(JSON.parse(localStorage.getItem(APP_STORAGE_KEY) ?? 'null')).toEqual(after)
+    fireEvent.click(screen.getByRole('button', { name: '첫 휴가 계획하기' }))
+    expect(await screen.findByRole('heading', { name: '달력' })).toBeInTheDocument()
+  })
+
+  it('수정 시 선택 해제한 항목을 제거하고 다시 선택해도 한 번만 저장한다', async () => {
+    renderLeaveReview()
+    fireEvent.change(screen.getByRole('spinbutton', { name: '연가 보유 일수' }), { target: { value: '24' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: '성과제 등록' }))
+    fireEvent.change(screen.getByRole('spinbutton', { name: '성과제 보유 일수' }), { target: { value: '7' } })
+    fireEvent.click(screen.getByRole('button', { name: '이 휴가로 시작하기' }))
+    await screen.findByRole('heading', { name: '기본 휴가 설정을 완료했어요' })
+
+    fireEvent.click(screen.getByRole('button', { name: '연가·성과제 일수 수정하기' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: '성과제 등록' }))
+    fireEvent.click(screen.getByRole('button', { name: '이 휴가로 시작하기' }))
+    await screen.findByRole('heading', { name: '기본 휴가 설정을 완료했어요' })
+    expect(screen.queryByText('성과제')).not.toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem(APP_STORAGE_KEY) ?? 'null').leaveGrants).toEqual([
+      expect.objectContaining({ id: 'air-force-onboarding-annual', days: 24 }),
+    ])
+
+    fireEvent.click(screen.getByRole('button', { name: '이전 단계로 돌아가기' }))
+    expect(screen.getByRole('checkbox', { name: '성과제 등록' })).not.toBeChecked()
+    fireEvent.click(screen.getByRole('checkbox', { name: '성과제 등록' }))
+    expect(screen.getByRole('spinbutton', { name: '성과제 보유 일수' })).toHaveValue(7)
+    fireEvent.click(screen.getByRole('button', { name: '이 휴가로 시작하기' }))
+    await screen.findByRole('heading', { name: '기본 휴가 설정을 완료했어요' })
+    expect(JSON.parse(localStorage.getItem(APP_STORAGE_KEY) ?? 'null').leaveGrants).toHaveLength(2)
+  })
+
+  it('완료 기록 저장에 실패한 뒤 재시도하면 이미 저장된 휴가를 중복 생성하지 않는다', async () => {
+    renderLeaveReview()
+    fireEvent.change(screen.getByRole('spinbutton', { name: '연가 보유 일수' }), { target: { value: '24' } })
+    const setItem = Storage.prototype.setItem
+    const storageSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
+      if (key === ONBOARDING_STORAGE_KEY) throw new Error('Storage unavailable')
+      setItem.call(this, key, value)
+    })
+    try {
+      fireEvent.click(screen.getByRole('button', { name: '이 휴가로 시작하기' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('휴가를 저장했지만 설정 완료를 기록하지 못했습니다.')
+    } finally {
+      storageSpy.mockRestore()
+    }
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: '연가 보유 일수' }), { target: { value: '20' } })
+    fireEvent.click(screen.getByRole('button', { name: '이 휴가로 시작하기' }))
+    await screen.findByRole('heading', { name: '기본 휴가 설정을 완료했어요' })
+    expect(JSON.parse(localStorage.getItem(APP_STORAGE_KEY) ?? 'null').leaveGrants).toEqual([
+      expect.objectContaining({ id: 'air-force-onboarding-annual', days: 20 }),
+    ])
+  })
+
   it('완료 후 새로고침해도 온보딩을 반복하지 않고 저장한 휴가를 유지한다', async () => {
     const { unmount } = render(<MemoryRouter><App /></MemoryRouter>)
     fireEvent.click(screen.getByRole('button', { name: '내 휴가 설정하기' }))

@@ -44,7 +44,10 @@ export function AirForceOnboardingPage({
   const dispatch = useAppDispatch()
   const { leaveGrants } = useAppState()
   const [branchSelected, setBranchSelected] = useState(initialState?.branch === 'air_force')
-  const [items, setItems] = useState(initialItems)
+  const [items, setItems] = useState(() => initialItems.map((item) => {
+    const grant = leaveGrants.find((grant) => grant.id === `air-force-onboarding-${item.type}`)
+    return grant ? { ...item, included: true, days: String(grant.days) } : item
+  }))
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [savedItems, setSavedItems] = useState<SavedItem[] | null>(null)
@@ -57,7 +60,7 @@ export function AirForceOnboardingPage({
     const saved = saveOnboardingState({
       version: 1,
       branch: 'air_force',
-      leaveSetupCompletedAt: null,
+      leaveSetupCompletedAt: loadOnboardingState()?.leaveSetupCompletedAt ?? null,
     })
     if (saved) setBranchSelected(true)
     else setError('설정을 저장하지 못했습니다. 다시 시도해주세요.')
@@ -85,6 +88,12 @@ export function AirForceOnboardingPage({
     setItems((current) => current.map((item) => item.type === type ? { ...item, touched: true } : item))
   }
 
+  function returnToLeaveReview() {
+    setSavedItems(null)
+    setBranchSelected(true)
+    setError(null)
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (submitting.current) return
@@ -99,21 +108,35 @@ export function AirForceOnboardingPage({
     setError(null)
     const now = new Date().toISOString()
     try {
-      for (const item of selectedItems) {
+      for (const item of items) {
         const id = `air-force-onboarding-${item.type}`
-        // Reusing these stable IDs makes a retried onboarding submission idempotent.
-        if (leaveGrants.some((grant) => grant.id === id)) continue
+        const existingGrant = leaveGrants.find((grant) => grant.id === id)
+        // Only reconcile onboarding grants; stable IDs also make retries safe.
+        if (!item.included) {
+          if (!existingGrant) continue
+          const result = await dispatch({ type: 'leaveGrant/deleted', payload: { id } })
+          if (!result.ok) {
+            setError(result.message)
+            return
+          }
+          continue
+        }
+        if (existingGrant?.days === Number(item.days)) continue
         const leaveGrant: LeaveGrant = {
           id,
           type: item.type,
-          days: Number(item.days),
           acquiredDate: null,
           reason: '',
           memo: '',
           createdAt: now,
+          ...existingGrant,
+          days: Number(item.days),
           updatedAt: now,
         }
-        const result = await dispatch({ type: 'leaveGrant/added', payload: leaveGrant })
+        const result = await dispatch({
+          type: existingGrant ? 'leaveGrant/updated' : 'leaveGrant/added',
+          payload: leaveGrant,
+        })
         if (!result.ok) {
           setError(result.message)
           return
@@ -148,7 +171,19 @@ export function AirForceOnboardingPage({
       <div className={isIntroduction ? 'min-h-dvh w-full' : 'mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-2xl flex-col'}>
         {savedItems ? (
           <section className="m-auto w-full rounded-2xl bg-white p-6 shadow-sm sm:p-8">
-            <p className="text-sm font-semibold text-brand-600">공군 휴가 캘린더 · 설정 완료</p>
+            <div className="flex items-center gap-2">
+              <button
+                aria-label="이전 단계로 돌아가기"
+                className="inline-flex size-12 shrink-0 items-center justify-center rounded-2xl text-slate-600 transition-[background-color,color,transform] duration-150 ease-out hover:bg-slate-100 hover:text-slate-950 active:scale-95 active:bg-slate-200 motion-reduce:transform-none motion-reduce:transition-none"
+                onClick={returnToLeaveReview}
+                type="button"
+              >
+                <svg aria-hidden="true" className="size-6 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m15 18-6-6 6-6" />
+                </svg>
+              </button>
+              <p className="text-sm font-semibold text-brand-600">공군 휴가 캘린더 · 설정 완료</p>
+            </div>
             <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">기본 휴가 설정을 완료했어요</h1>
             <p className="mt-3 text-base leading-7 text-slate-600">
               이제 달력에서 휴가를 사용할 날짜를 계획해보세요.
@@ -161,6 +196,13 @@ export function AirForceOnboardingPage({
                 </li>
               ))}
             </ul>
+            <button
+              className="mt-4 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              onClick={returnToLeaveReview}
+              type="button"
+            >
+              연가·성과제 일수 수정하기
+            </button>
             <button
               className="mt-8 min-h-12 w-full rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700"
               onClick={() => navigate('/calendar', { replace: true })}
