@@ -17,6 +17,8 @@ const leaveGrant: LeaveGrant = {
 }
 
 describe('보유 휴가 상세·수정·삭제 흐름', () => {
+  beforeEach(() => saveAppState({ leaveGrants: [], leaveUsages: [], outings: [] }))
+
   it('상세에 날짜 기준 완료·예정·사용 가능 합계를 표시한다', () => {
     const summaryGrant = { ...leaveGrant, days: 5 }
     const leaveUsages: LeaveUsage[] = [
@@ -71,7 +73,7 @@ describe('보유 휴가 상세·수정·삭제 흐름', () => {
 
     expect(screen.getByText('주 40시간 근무')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('link', { name: '수정' }))
-    fireEvent.change(screen.getByLabelText(/획득 일수/), {
+    fireEvent.change(screen.getByRole('spinbutton'), {
       target: { value: '4' },
     })
     fireEvent.change(screen.getByLabelText(/획득 사유/), {
@@ -158,7 +160,7 @@ describe('보유 휴가 상세·수정·삭제 흐름', () => {
     )
 
     fireEvent.click(screen.getByRole('link', { name: '수정' }))
-    fireEvent.change(screen.getByLabelText(/획득 일수/), {
+    fireEvent.change(screen.getByRole('spinbutton'), {
       target: { value: '1' },
     })
     fireEvent.click(screen.getByRole('button', { name: '변경사항 저장' }))

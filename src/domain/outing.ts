@@ -1,6 +1,8 @@
 import { isCalendarDate, type CalendarDate } from './calendarDate'
 import type { LeaveUsage } from './leaveUsage'
 
+export const MAX_OUTING_REASON_LENGTH = 100
+
 export type Outing = {
   id: string
   date: CalendarDate
@@ -16,7 +18,7 @@ export type OutingValidation =
   | { valid: true }
   | {
       valid: false
-      reason: 'invalidDate' | 'reasonRequired' | 'duplicate' | 'leaveOverlap'
+      reason: 'invalidDate' | 'reasonRequired' | 'reasonTooLong' | 'duplicate' | 'leaveOverlap'
       message: string
     }
 
@@ -39,6 +41,14 @@ export function validateOuting(
       valid: false,
       reason: 'reasonRequired',
       message: '외출 사유를 입력해주세요.',
+    }
+  }
+
+  if (input.reason.trim().length > MAX_OUTING_REASON_LENGTH) {
+    return {
+      valid: false,
+      reason: 'reasonTooLong',
+      message: `외출 사유는 ${MAX_OUTING_REASON_LENGTH}자 이하로 입력해주세요.`,
     }
   }
 

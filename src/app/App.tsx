@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from 'react-router'
+import { useState } from 'react'
+import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { AuthProvider } from '../auth/AuthProvider'
 import { useAuth } from '../auth/authContext'
 import { AccountPage } from '../pages/AccountPage'
@@ -9,8 +10,11 @@ import { LeaveDetailPage } from '../pages/LeaveDetailPage'
 import { LeaveEditPage } from '../pages/LeaveEditPage'
 import { LeavePage } from '../pages/LeavePage'
 import { LoginPage } from '../pages/LoginPage'
+import { AirForceOnboardingPage } from '../pages/AirForceOnboardingPage'
 import { AppStateProvider } from '../store/AppStateProvider'
 import { useAppRuntime } from '../store/appRuntimeContext'
+import { hasValidExistingAppData, isNewLocalUser, loadOnboardingState } from '../store/appStorage'
+import { isServerMode } from '../server/supabaseClient'
 import { AppLayout } from './AppLayout'
 
 function LoadingScreen({ message = '데이터를 불러오는 중입니다…' }: { message?: string }) {
@@ -23,6 +27,17 @@ function LoadingScreen({ message = '데이터를 불러오는 중입니다…' }
 
 function AuthenticatedRoutes() {
   const runtime = useAppRuntime()
+  const location = useLocation()
+  const onboarding = isServerMode ? null : loadOnboardingState()
+  const shouldShowOnboarding = !isServerMode && (
+    (onboarding?.branch === 'air_force' && onboarding.leaveSetupCompletedAt === null) ||
+    (!hasValidExistingAppData() && isNewLocalUser())
+  )
+  // Keep the active flow mounted through saves until the user navigates away.
+  const [onboardingLocationKey] = useState(() => shouldShowOnboarding ? location.key : null)
+  if (shouldShowOnboarding || onboardingLocationKey === location.key) {
+    return <AirForceOnboardingPage initialState={onboarding} />
+  }
   if (runtime.status === 'loading') return <LoadingScreen />
   if (runtime.status === 'error') {
     return (

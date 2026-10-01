@@ -121,7 +121,7 @@ export function LeaveUsageDetailCard({
         <div className="flex justify-between gap-4">
           <dt className="text-slate-500">획득 기록</dt>
           <dd className="text-right font-medium text-slate-900">
-            {grant.acquiredDate} · {grant.days}일 획득
+            {grant.acquiredDate ?? '획득일 미입력'} · {grant.days}일 획득
           </dd>
         </div>
       </dl>

@@ -1,8 +1,10 @@
 import {
   addCalendarDays,
+  addCalendarMonths,
   createMonthGrid,
   getInclusiveDayCount,
   getKstToday,
+  isCalendarDate,
   moveCalendarMonth,
   orderCalendarRange,
 } from './calendarDate'
@@ -12,6 +14,19 @@ describe('달력 날짜 계산', () => {
     expect(addCalendarDays('2026-08-31', 1)).toBe('2026-09-01')
     expect(addCalendarDays('2026-12-31', 1)).toBe('2027-01-01')
     expect(addCalendarDays('2026-03-01', -1)).toBe('2026-02-28')
+  })
+
+  it('월 이동에서 대상 월의 마지막 날로 보정한다', () => {
+    expect(addCalendarMonths('2026-08-31', -6)).toBe('2026-02-28')
+    expect(addCalendarMonths('2028-08-31', -6)).toBe('2028-02-29')
+    expect(addCalendarMonths('2026-09-10', 6)).toBe('2027-03-10')
+  })
+
+  it('2000년부터 2999년까지만 앱 날짜로 허용한다', () => {
+    expect(isCalendarDate('2000-01-01')).toBe(true)
+    expect(isCalendarDate('2999-12-31')).toBe(true)
+    expect(isCalendarDate('1999-12-31')).toBe(false)
+    expect(isCalendarDate('3000-01-01')).toBe(false)
   })
   it('실행 환경과 관계없이 KST의 오늘 날짜를 구한다', () => {
     expect(getKstToday(new Date('2026-08-03T14:59:59Z'))).toBe('2026-08-03')
