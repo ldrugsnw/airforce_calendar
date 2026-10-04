@@ -12,6 +12,8 @@ export type AccountSnapshot = {
   status: 'active' | 'pending_deletion'
   localMigrationCompletedAt: string | null
   localMigrationFingerprint: string | null
+  onboardingCompletedAt?: string | null
+  onboardingGrantIds?: { annual: string; performance: string } | null
 }
 
 export type AppSnapshot = AppState & {
@@ -33,6 +35,7 @@ export type AppServerErrorCode =
   | 'MIGRATION_SERVER_NOT_EMPTY'
   | 'MIGRATION_INVALID_VERSION'
   | 'NETWORK_ERROR'
+  | 'CONFIRMATION_REQUIRED'
   | 'UNKNOWN_ERROR'
 
 export type MutationResult =
@@ -54,6 +57,9 @@ export function isAppSnapshot(value: unknown): value is AppSnapshot {
       typeof account.localMigrationCompletedAt === 'string') &&
     (account.localMigrationFingerprint === null ||
       typeof account.localMigrationFingerprint === 'string') &&
+    (account.onboardingCompletedAt === undefined || account.onboardingCompletedAt === null || typeof account.onboardingCompletedAt === 'string') &&
+    (account.onboardingGrantIds === undefined || account.onboardingGrantIds === null ||
+      (isRecord(account.onboardingGrantIds) && typeof account.onboardingGrantIds.annual === 'string' && typeof account.onboardingGrantIds.performance === 'string')) &&
     typeof value.syncedAt === 'string' &&
     Array.isArray(value.leaveGrants) &&
     value.leaveGrants.every(
@@ -111,6 +117,7 @@ const ERROR_MESSAGES: Record<AppServerErrorCode, string> = {
   MIGRATION_SERVER_NOT_EMPTY: '서버에 데이터가 있어 자동으로 합칠 수 없습니다.',
   MIGRATION_INVALID_VERSION: '이전할 로컬 데이터 형식을 확인해주세요.',
   NETWORK_ERROR: '서버에 연결할 수 없습니다. 인터넷 연결을 확인해주세요.',
+  CONFIRMATION_REQUIRED: '기존 기록의 변경 범위를 확인하고 저장해주세요.',
   UNKNOWN_ERROR: '요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
 }
 

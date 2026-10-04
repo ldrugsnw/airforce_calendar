@@ -29,15 +29,12 @@ function AuthenticatedRoutes() {
   const runtime = useAppRuntime()
   const location = useLocation()
   const onboarding = isServerMode ? null : loadOnboardingState()
-  const shouldShowOnboarding = !isServerMode && (
-    (onboarding?.branch === 'air_force' && onboarding.leaveSetupCompletedAt === null) ||
-    (!hasValidExistingAppData() && isNewLocalUser())
-  )
-  // Keep the active flow mounted through saves until the user navigates away.
-  const [onboardingLocationKey] = useState(() => shouldShowOnboarding ? location.key : null)
-  if (shouldShowOnboarding || onboardingLocationKey === location.key) {
-    return <AirForceOnboardingPage initialState={onboarding} />
-  }
+  const shouldShowOnboarding = isServerMode
+    ? runtime.status === 'ready' && runtime.account?.onboardingCompletedAt === null
+    : (
+      (onboarding?.branch === 'air_force' && onboarding.leaveSetupCompletedAt === null) ||
+      (!hasValidExistingAppData() && isNewLocalUser())
+    )
   if (runtime.status === 'loading') return <LoadingScreen />
   if (runtime.status === 'error') {
     return (
@@ -51,6 +48,18 @@ function AuthenticatedRoutes() {
         </section>
       </main>
     )
+  }
+  return <OnboardingGate shouldShow={shouldShowOnboarding} initialState={onboarding} locationKey={location.key} />
+}
+
+function OnboardingGate({ shouldShow, initialState, locationKey }: {
+  shouldShow: boolean; initialState: ReturnType<typeof loadOnboardingState>; locationKey: string
+}) {
+  // Mount only after loading. Retain the summary and edits until navigation.
+  const [onboardingLocationKey, setOnboardingLocationKey] = useState<string | null>(null)
+  if (shouldShow && onboardingLocationKey !== locationKey) setOnboardingLocationKey(locationKey)
+  if (shouldShow || onboardingLocationKey === locationKey) {
+    return <AirForceOnboardingPage initialState={initialState} />
   }
   return (
     <Routes>
@@ -69,11 +78,11 @@ function AuthenticatedRoutes() {
 }
 
 function AppWithAuth() {
-  const { status } = useAuth()
+  const { status, user } = useAuth()
   if (status === 'initializing') return <LoadingScreen message="로그인 상태를 확인하는 중입니다…" />
   if (status === 'unauthenticated') return <LoginPage />
   return (
-    <AppStateProvider>
+    <AppStateProvider key={user?.id ?? 'local'}>
       <AuthenticatedRoutes />
     </AppStateProvider>
   )

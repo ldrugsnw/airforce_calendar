@@ -220,8 +220,8 @@ export function getLocalDataForMigration(): StoredAppData | null {
     const raw = JSON.parse(localStorage.getItem(APP_STORAGE_KEY) ?? 'null') as
       | ParsedStoredAppData
       | null
-    if (raw?.version !== 3) return null
-    const state = loadAppState()
+    const state = parseStoredAppData(raw)
+    if (!state) return null
     if (
       state.leaveGrants.length === 0 &&
       state.leaveUsages.length === 0 &&

@@ -17,7 +17,8 @@ insert into auth.users(
    '{"provider":"email","providers":["email"]}', '{}', now(), now());
 
 select is(
-  (select count(*)::integer from public.user_accounts),
+  (select count(*)::integer from public.user_accounts
+    where user_id in ('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002')),
   2,
   'auth trigger creates app accounts without an allowlist'
 );

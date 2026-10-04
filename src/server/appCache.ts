@@ -14,10 +14,14 @@ export function loadServerCache(userId: string): AppSnapshot | null {
 }
 
 export function saveServerCache(snapshot: AppSnapshot) {
-  localStorage.setItem(
-    `${CACHE_PREFIX}${snapshot.account.userId}`,
-    JSON.stringify(snapshot),
-  )
+  try {
+    localStorage.setItem(
+      `${CACHE_PREFIX}${snapshot.account.userId}`,
+      JSON.stringify(snapshot),
+    )
+  } catch {
+    // A browser cache failure must not turn a successful server save into an error.
+  }
 }
 
 export function clearServerCache(userId: string) {

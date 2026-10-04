@@ -3,6 +3,7 @@ import type { Outing } from '../domain/outing'
 import {
   APP_STORAGE_KEY,
   ONBOARDING_STORAGE_KEY,
+  getLocalDataForMigration,
   hasValidExistingAppData,
   isNewLocalUser,
   loadAppState,
@@ -22,6 +23,13 @@ describe('앱 상태 브라우저 저장', () => {
     createdAt: '2026-08-03T00:00:00.000Z',
     updatedAt: '2026-08-03T00:00:00.000Z',
   }
+
+  it.each([1, 2, 3])('기존 v%d 기기 기록을 원본 변경 없이 이전용 v3로 읽는다', (version) => {
+    const raw = JSON.stringify({ version, leaveGrants: [leaveGrant], leaveUsages: [], outings: [] })
+    localStorage.setItem(APP_STORAGE_KEY, raw)
+    expect(getLocalDataForMigration()).toEqual({ version: 3, leaveGrants: [leaveGrant], leaveUsages: [], outings: [] })
+    expect(localStorage.getItem(APP_STORAGE_KEY)).toBe(raw)
+  })
 
   it('두 저장 키가 없으면 온보딩 상태가 없고 신규 로컬 사용자로 판단한다', () => {
     expect(loadOnboardingState()).toBeNull()

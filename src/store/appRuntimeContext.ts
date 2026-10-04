@@ -1,14 +1,19 @@
+import type { AccountSnapshot, AppSnapshot, MutationResult } from '../server/appSnapshot'
+import type { OnboardingSelection, OnboardingPlan } from '../server/appRepository'
 import { createContext, useContext } from 'react'
 
 export type AppRuntimeStatus = 'local' | 'loading' | 'ready' | 'offlineReadonly' | 'error'
 
 export type AppRuntimeContextValue = {
+  account: AccountSnapshot | null
+  saveOnboarding: (requestId: string, selection: OnboardingSelection, expectedRevisions: OnboardingSelection) => Promise<MutationResult>
+  saveOnboardingPlan: (requestId: string, plan: OnboardingPlan) => Promise<MutationResult>
   status: AppRuntimeStatus
   message: string | null
   isSaving: boolean
   hasLocalMigration: boolean
   retry: () => Promise<void>
-  migrateLocalData: () => Promise<{ ok: boolean; message?: string }>
+  migrateLocalData: (preserveLocal?: boolean) => Promise<{ ok: boolean; message?: string; snapshot?: AppSnapshot }>
   dismissMigration: () => void
 }
 

@@ -1,6 +1,6 @@
 import type { AppAction, AppState } from '../store/appReducer'
 import { appReducer } from '../store/appReducer'
-import { saveAppState } from '../store/appStorage'
+import { saveAppState, type StoredAppData } from '../store/appStorage'
 import {
   getServerErrorMessage,
   isAppSnapshot,
@@ -135,7 +135,7 @@ export const serverAppRepository: AppRepository = {
     }
     const args = {
       p_request_id: crypto.randomUUID(),
-      p_data: data,
+      p_data: normalizeMigrationIds(data),
     }
     let response = await supabase.rpc('api_migrate_local_data', args)
     if (response.error) response = await supabase.rpc('api_migrate_local_data', args)
@@ -170,4 +170,52 @@ export const localAppRepository: AppRepository = {
   async migrateLocalData() {
     return { ok: false, code: 'UNKNOWN_ERROR', message: '로컬 모드에서는 이전할 수 없습니다.' }
   },
+}
+
+export type OnboardingSelection = { annual: number | null; performance: number | null }
+
+export async function saveServerOnboarding(
+  requestId: string, selection: OnboardingSelection, expectedRevisions: OnboardingSelection,
+): Promise<MutationResult> {
+  if (!supabase) return { ok: false, code: 'NETWORK_ERROR', message: getServerErrorMessage('NETWORK_ERROR') }
+  const args = { p_request_id: requestId, p_selection: selection, p_expected_revisions: expectedRevisions }
+  try {
+    let response = await supabase.rpc('api_save_onboarding', args)
+    if (response.error) response = await supabase.rpc('api_save_onboarding', args)
+    if (!response.error) return parseMutationResult(response.data)
+  } catch { /* A lost response is retried with the same request ID by the page. */ }
+  return { ok: false, code: 'NETWORK_ERROR', message: getServerErrorMessage('NETWORK_ERROR') }
+}
+
+// Older local onboarding records used descriptive IDs. Keep all references intact
+// while translating those records to the UUID contract during account migration.
+export function normalizeMigrationIds(data: unknown): unknown {
+  if (!data || typeof data !== 'object' || !('version' in data) || data.version !== 3) return data
+  const stored = data as StoredAppData
+  const ids = new Map<string, string>()
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const idFor = (id: string) => {
+    if (!ids.has(id)) ids.set(id, uuid.test(id) ? id : crypto.randomUUID())
+    return ids.get(id)!
+  }
+  return {
+    ...stored,
+    leaveGrants: stored.leaveGrants.map((item) => ({ ...item, id: idFor(item.id) })),
+    leaveUsages: stored.leaveUsages.map((item) => ({ ...item, id: idFor(item.id), leaveGrantId: idFor(item.leaveGrantId) })),
+    outings: stored.outings.map((item) => ({ ...item, id: idFor(item.id) })),
+  }
+}
+
+export type OnboardingPlanItem = { key: string; id: string | null; type: 'annual' | 'performance'; days: number | null }
+export type OnboardingPlan = { items: OnboardingPlanItem[]; expectedState: AppState; confirmed: boolean }
+
+export async function saveServerOnboardingPlan(requestId: string, plan: OnboardingPlan): Promise<MutationResult> {
+  if (!supabase) return { ok: false, code: 'NETWORK_ERROR', message: getServerErrorMessage('NETWORK_ERROR') }
+  const args = { p_request_id: requestId, p_items: plan.items, p_expected_state: plan.expectedState, p_confirmed: plan.confirmed }
+  try {
+    let response = await supabase.rpc('api_save_onboarding_plan', args)
+    if (response.error) response = await supabase.rpc('api_save_onboarding_plan', args)
+    if (!response.error) return parseMutationResult(response.data)
+  } catch { /* Reuse the page's request ID after an uncertain response. */ }
+  return { ok: false, code: 'NETWORK_ERROR', message: getServerErrorMessage('NETWORK_ERROR') }
 }
