@@ -66,6 +66,33 @@ beforeEach(() => {
 })
 
 describe('로그인 계정의 서버 온보딩', () => {
+  it('완료 계정도 범위 밖 획득일을 원본 그대로 검토하고 날짜만 정정할 수 있다', async () => {
+    const snapshot = completed()
+    snapshot.leaveGrants[0].acquiredDate = '9999-01-01'
+    mocks.load.mockResolvedValue(snapshot)
+    const corrected = completed()
+    corrected.leaveGrants[0].acquiredDate = '2026-09-01'
+    mocks.plan.mockResolvedValue({ ok: true, snapshot: corrected })
+    mount()
+    fireEvent.click(await screen.findByRole('button', { name: '내 휴가 설정하기' }))
+    fireEvent.click(screen.getByRole('button', { name: '기존 기록 이어 쓰기' }))
+    expect(screen.getByText(/획득일 9999-01-01/)).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: '연가 등록' })).toBeDisabled()
+    expect(screen.getByLabelText('연가 획득일')).toHaveValue('')
+    submit()
+    expect(screen.getByRole('alert')).toHaveTextContent('올바른 날짜')
+    expect(mocks.plan).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('연가 획득일'), { target: { value: '2026-09-01' } })
+    submit()
+    expect(screen.getByRole('list', { name: '변경 범위' })).toHaveTextContent('획득일 9999-01-01 → 2026-09-01')
+    expect(mocks.plan).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: '변경 내용을 확인했고 저장합니다' }))
+    await summary()
+    expect(mocks.plan.mock.calls[0][1]).toMatchObject({ confirmed: true, items: [
+      { id: ids.annual, days: 24, acquiredDate: '2026-09-01' }, { id: ids.performance, days: 7 },
+    ] })
+  })
+
   it('서버 로딩이 끝나기 전에는 신규 사용자라고 판단하지 않는다', async () => {
     let resolve!: (snapshot: AppSnapshot) => void
     mocks.load.mockImplementation(() => new Promise<AppSnapshot>((done) => { resolve = done }))

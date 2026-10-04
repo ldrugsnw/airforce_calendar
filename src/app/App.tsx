@@ -15,6 +15,8 @@ import { AppStateProvider } from '../store/AppStateProvider'
 import { useAppRuntime } from '../store/appRuntimeContext'
 import { hasValidExistingAppData, isNewLocalUser, loadOnboardingState } from '../store/appStorage'
 import { isServerMode } from '../server/supabaseClient'
+import { useAppState } from '../store/appStateContext'
+import { needsLeaveCorrection } from '../domain/leave'
 import { AppLayout } from './AppLayout'
 
 function LoadingScreen({ message = '데이터를 불러오는 중입니다…' }: { message?: string }) {
@@ -27,10 +29,11 @@ function LoadingScreen({ message = '데이터를 불러오는 중입니다…' }
 
 function AuthenticatedRoutes() {
   const runtime = useAppRuntime()
+  const state = useAppState()
   const location = useLocation()
   const onboarding = isServerMode ? null : loadOnboardingState()
   const shouldShowOnboarding = isServerMode
-    ? runtime.status === 'ready' && runtime.account?.onboardingCompletedAt === null
+    ? runtime.status === 'ready' && (runtime.account?.onboardingCompletedAt === null || state.leaveGrants.some(needsLeaveCorrection))
     : (
       (onboarding?.branch === 'air_force' && onboarding.leaveSetupCompletedAt === null) ||
       (!hasValidExistingAppData() && isNewLocalUser())

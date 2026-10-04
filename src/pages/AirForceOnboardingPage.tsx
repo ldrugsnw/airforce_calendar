@@ -4,8 +4,10 @@ import {
   MAX_LEAVE_GRANT_DAYS,
   MIN_LEAVE_GRANT_DAYS,
   getLeaveTypeLabel,
+  needsLeaveCorrection,
   type LeaveGrant,
 } from '../domain/leave'
+import { isCalendarDate, MIN_CALENDAR_DATE, MAX_CALENDAR_DATE } from '../domain/calendarDate'
 import { isServerMode } from '../server/supabaseClient'
 import { useAppRuntime } from '../store/appRuntimeContext'
 import { createOnboardingPlan, createReviewItems, getOnboardingChanges, validateOnboardingChanges, type ReviewItem } from '../domain/onboarding'
@@ -37,6 +39,9 @@ function getDaysError(item: ReviewItem) {
   ) {
     return `${item.label} 보유 일수를 ${MIN_LEAVE_GRANT_DAYS}~${MAX_LEAVE_GRANT_DAYS}일 정수로 입력해주세요.`
   }
+  if (item.correction && ((item.dateRequired && !item.acquiredDate) || (item.acquiredDate && !isCalendarDate(item.acquiredDate)))) {
+    return `${item.label} 획득일을 2000년부터 2999년 사이의 올바른 날짜로 입력해주세요.`
+  }
   return null
 }
 
@@ -57,12 +62,12 @@ export function AirForceOnboardingPage({
   const [showExistingChoice, setShowExistingChoice] = useState(false)
   const reviewInitialized = useRef(false)
   const [confirmation, setConfirmation] = useState<OnboardingPlan | null>(null)
-  const otherGrants = isServerMode ? leaveGrants.filter((grant) => grant.type !== 'annual' && grant.type !== 'performance') : []
   const [branchSelected, setBranchSelected] = useState(initialState?.branch === 'air_force')
   const [items, setItems] = useState(() => initialItems.map((item) => {
     const grant = leaveGrants.find((grant) => grant.id === `air-force-onboarding-${item.type}`)
     return grant ? { ...item, included: true, days: String(grant.days) } : item
   }))
+  const otherGrants = isServerMode ? leaveGrants.filter((grant) => grant.type !== 'annual' && grant.type !== 'performance' && !needsLeaveCorrection(grant) && !items.some((item) => item.grantId === grant.id)) : []
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [savedItems, setSavedItems] = useState<SavedItem[] | null>(null)
@@ -185,7 +190,7 @@ export function AirForceOnboardingPage({
       if (isServerMode) {
         const selection = Object.fromEntries(items.map((item) => [item.type, item.included ? Number(item.days) : null])) as OnboardingSelection
         const expectedRevisions = Object.fromEntries(items.map((item) => [item.type,
-          leaveGrants.find((grant) => grant.id === runtime.account?.onboardingGrantIds?.[item.type])?.revision ?? 0,
+          leaveGrants.find((grant) => grant.id === (runtime.account?.onboardingGrantIds as Record<string, string> | null | undefined)?.[item.type])?.revision ?? 0,
         ])) as OnboardingSelection
         const key = JSON.stringify({ selection, expectedRevisions })
         if (pendingRequest.current?.key !== key) pendingRequest.current = { key, id: crypto.randomUUID() }
@@ -300,11 +305,12 @@ export function AirForceOnboardingPage({
         ) : confirmation ? (
           <section className="m-auto w-full rounded-2xl bg-white p-6 shadow-sm">
             <h1 className="text-2xl font-bold text-slate-950">기존 기록 변경 확인</h1>
-            <p className="mt-3 text-sm leading-6 text-slate-600">일수 변경과 선택 해제만 반영합니다. 변경하지 않는 휴가와 외출은 유지합니다.</p>
+            <p className="mt-3 text-sm leading-6 text-slate-600">입력한 일수·획득일 변경과 선택 해제를 반영합니다. 변경하지 않는 휴가와 외출은 유지합니다.</p>
             <ul className="mt-5 space-y-3" aria-label="변경 범위">
               {getOnboardingChanges(confirmation).map((change) => (
                 <li key={change.key} className="rounded-xl bg-slate-50 p-3 text-sm">
                   {items.find((item) => item.key === change.key)?.label ?? getLeaveTypeLabel(change.type)}: {change.old ? `${change.old.days}일` : '신규'} → {change.days === null ? '삭제' : `${change.days}일`}
+                  {change.acquiredDate !== undefined && change.old?.acquiredDate !== change.acquiredDate && <p>획득일 {change.old?.acquiredDate ?? '미입력'} → {change.acquiredDate ?? '미입력'}</p>}
                   {change.old && change.days !== null && <p>사용·예정 일정 {change.activeCount}건과 취소 기록 {change.canceledCount}건 유지</p>}
                   {change.old && change.days === null && <p>이 휴가와 연결된 취소 기록 {change.canceledCount}건 삭제</p>}
                 </li>
@@ -320,7 +326,7 @@ export function AirForceOnboardingPage({
             <h1 className="text-2xl font-bold text-slate-950">기존 기록이 있어요</h1>
             <p className="mt-3 text-sm leading-6 text-slate-600">{localRecords ? '기기' : '계정'}의 휴가 {localRecords?.leaveGrants.length ?? leaveGrants.length}건·사용 일정 {localRecords?.leaveUsages.length ?? state.leaveUsages.length}건·외출 {localRecords?.outings.length ?? state.outings.length}건이 있습니다.</p>
             <p className="mt-3 text-sm leading-6 text-slate-600">이어 쓰면 기존 일수를 채워드립니다. 새로 설정하면 입력칸을 비워 다시 입력합니다. 같은 종류의 기록이 여러 건이면 각각 확인할 수 있습니다.</p>
-            {localRecords ? <p className="mt-3 text-sm text-slate-600">기기의 기록을 이어 쓰면 계정으로 복사합니다. 새로 설정해도 기기의 원본은 유지합니다.</p> : <p className="mt-3 text-sm text-slate-600">기존 획득일·메모·사용 일정은 유지합니다. 일수 변경이나 삭제는 저장 전에 확인합니다.</p>}
+            {localRecords ? <p className="mt-3 text-sm text-slate-600">기기의 기록을 이어 쓰면 계정으로 복사합니다. 새로 설정해도 기기의 원본은 유지합니다.</p> : <p className="mt-3 text-sm text-slate-600">기존 ID·메모·사용 일정은 유지합니다. 범위 밖 기록의 일수·획득일은 직접 수정하고 저장 전에 확인합니다.</p>}
             {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
             <button type="button" disabled={isSaving} className="mt-5 min-h-12 w-full rounded-xl bg-brand-600 text-white" onClick={() => void chooseExisting(true)}>기존 기록 이어 쓰기</button>
             <button type="button" disabled={isSaving} className="mt-3 min-h-12 w-full rounded-xl border border-slate-300" onClick={() => void chooseExisting(false)}>새로 설정하기</button>
@@ -428,7 +434,7 @@ export function AirForceOnboardingPage({
               </p>
             </header>
 
-            {isServerMode && serverHasRecords && <p className="mb-4 text-sm leading-6 text-slate-600">입력값은 이미 사용·계획한 휴가를 포함한 기록별 총 일수입니다. 사용·예정 일수는 그대로 차감됩니다. 기존 획득일·메모·일정은 유지합니다.</p>}
+            {isServerMode && serverHasRecords && <p className="mb-4 text-sm leading-6 text-slate-600">입력값은 이미 사용·계획한 휴가를 포함한 기록별 총 일수입니다. 사용·예정 일수는 그대로 차감됩니다. 기존 ID·메모·일정은 유지하며, 수정한 획득일만 변경합니다.</p>}
             {otherGrants.length > 0 && <p className="mb-4 text-sm text-slate-600">그대로 유지되는 휴가: {otherGrants.map((grant) => `${getLeaveTypeLabel(grant.type)} ${grant.days}일`).join(', ')}</p>}
             <form className="flex flex-1 flex-col" noValidate onSubmit={handleSubmit}>
               <div className="space-y-3">
@@ -446,7 +452,7 @@ export function AirForceOnboardingPage({
                         <input
                           aria-label={`${item.label} 등록`}
                           checked={item.included}
-                          disabled={isSaving}
+                          disabled={isSaving || item.correction}
                           className="h-5 w-5 accent-brand-600"
                           onChange={(event) => changeItem(item.key, { included: event.target.checked })}
                           type="checkbox"
@@ -454,6 +460,7 @@ export function AirForceOnboardingPage({
                         등록
                       </label>
                     </div>
+                    {item.correction && <p className="mt-3 text-sm text-amber-800">기존 값이 현재 입력 범위를 벗어났습니다. 기록을 유지한 채 일수와 획득일을 확인해주세요. 자동으로 삭제하거나 값을 바꾸지 않습니다.</p>}
                     {item.included && (
                       <>
                       <div className="relative mt-3">
@@ -475,6 +482,14 @@ export function AirForceOnboardingPage({
                           />
                           <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-slate-500">일</span>
                       </div>
+                      {item.correction && <label className="mt-3 block text-sm font-semibold text-slate-700">
+                        획득일{item.dateRequired ? ' (필수)' : ' (선택)'}
+                        <input aria-label={`${item.label} 획득일`} type="date" min={MIN_CALENDAR_DATE} max={MAX_CALENDAR_DATE}
+                          className="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-950"
+                          disabled={isSaving} value={item.acquiredDate ?? ''}
+                          onBlur={() => touchDays(item.key)}
+                          onChange={(event) => changeItem(item.key, { acquiredDate: event.target.value, touched: true })} />
+                      </label>}
                       {visibleError && (
                       <p
                         className="mt-2 text-sm leading-6 text-red-600"

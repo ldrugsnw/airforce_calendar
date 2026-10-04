@@ -47,6 +47,15 @@ describe('서버 스냅샷 계약', () => {
     })).toBe(true)
   })
 
+  it('기존 범위 밖 일수·획득일도 값 변경 없이 조회한다', () => {
+    const snapshot = { account: { userId: 'u', status: 'active', localMigrationCompletedAt: null, localMigrationFingerprint: null },
+      leaveGrants: [{ id: 'legacy', type: 'reward', days: 500, acquiredDate: '9999-01-01', reason: 'keep', memo: 'keep', revision: 1 }],
+      leaveUsages: [], outings: [], syncedAt: 'now' }
+    expect(isAppSnapshot(snapshot)).toBe(true)
+    expect(snapshot.leaveGrants[0]).toMatchObject({ days: 500, acquiredDate: '9999-01-01' })
+    expect(isAppSnapshot({ ...snapshot, leaveGrants: [{ ...snapshot.leaveGrants[0], acquiredDate: '3000-02-30' }] })).toBe(false)
+  })
+
   it('알 수 없는 서버 오류를 안전한 공통 안내로 바꾼다', () => {
     expect(toServerErrorCode('REVISION_CONFLICT')).toBe('REVISION_CONFLICT')
     expect(toServerErrorCode('database details')).toBe('UNKNOWN_ERROR')

@@ -62,3 +62,19 @@ export function getLeaveTypeLabel(type: LeaveType) {
 export function isLeaveType(value: unknown): value is LeaveType {
   return LEAVE_TYPES.some((leaveType) => leaveType.value === value)
 }
+
+// Read historical PostgreSQL dates without applying the new input policy.
+export function isStoredLeaveDate(value: unknown): value is CalendarDate {
+  if (typeof value !== 'string') return false
+  const match = /^(\d{4,})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return false
+  const [year, month, day] = match.slice(1).map(Number)
+  if (!Number.isSafeInteger(year) || year < 1 || month < 1 || month > 12) return false
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+  return day >= 1 && day <= [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
+}
+
+export function needsLeaveCorrection(grant: Pick<LeaveGrant, 'days' | 'acquiredDate'>) {
+  return grant.days > MAX_LEAVE_GRANT_DAYS ||
+    (grant.acquiredDate !== null && !isCalendarDate(grant.acquiredDate))
+}

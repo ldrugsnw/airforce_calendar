@@ -206,7 +206,7 @@ export function normalizeMigrationIds(data: unknown): unknown {
   }
 }
 
-export type OnboardingPlanItem = { key: string; id: string | null; type: 'annual' | 'performance'; days: number | null }
+export type OnboardingPlanItem = { key: string; id: string | null; type: import('../domain/leave').LeaveType; days: number | null; acquiredDate?: string | null }
 export type OnboardingPlan = { items: OnboardingPlanItem[]; expectedState: AppState; confirmed: boolean }
 
 export async function saveServerOnboardingPlan(requestId: string, plan: OnboardingPlan): Promise<MutationResult> {

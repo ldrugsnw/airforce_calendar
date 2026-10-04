@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { act, cleanup, configure, fireEvent, render, screen } from '@testing-library/react'
@@ -273,4 +274,82 @@ describe.skipIf(!enabled)('온보딩 UI → 실제 로컬 Supabase', () => {
       expect((await admin.auth.admin.deleteUser(temporaryId)).error).toBeNull()
     }
   }, 30_000)
+  it('범위 밖 기록을 조회하고 직접 일수·획득일을 정정한 뒤 ID·메모·일정을 보존한다', async () => {
+    const client = connection.client!
+    await client.auth.signOut()
+    const credentials = { email: `legacy-${crypto.randomUUID()}@example.com`, password: crypto.randomUUID() }
+    const created = await admin.auth.admin.createUser({ ...credentials, email_confirm: true })
+    expect(created.error).toBeNull()
+    const temporaryId = created.data.user!.id
+    const ids = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()]
+    try {
+      // Local-only fixture: recreate two checks atomically as NOT VALID, matching
+      // the pending production migration. Other local accounts/records stay intact.
+      execFileSync('docker', ['exec', '-i', 'supabase_db_airforce-calendar', 'psql', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1'], { input: `
+        begin;
+        alter table public.leave_grants drop constraint leave_grants_days_range_check, drop constraint leave_grants_acquired_date_range_check;
+        insert into public.leave_grants(id,user_id,type,days,acquired_date,reason,memo) values
+          ('${ids[0]}','${temporaryId}','annual',500,'9999-01-01','original annual','preserve memo'),
+          ('${ids[1]}','${temporaryId}','performance',500,'2026-09-01','original performance','preserve memo'),
+          ('${ids[2]}','${temporaryId}','reward',500,'5000-01-01','original reward','preserve memo');
+        alter table public.leave_grants add constraint leave_grants_days_range_check check(days between 1 and 365) not valid,
+          add constraint leave_grants_acquired_date_range_check check(acquired_date is null or acquired_date between date '2000-01-01' and date '2999-12-31') not valid;
+        insert into public.leave_usages(id,user_id,leave_grant_id,start_date,end_date,canceled,canceled_at) values
+          ('${crypto.randomUUID()}','${temporaryId}','${ids[0]}','2026-10-10','2026-10-11',false,null),
+          ('${crypto.randomUUID()}','${temporaryId}','${ids[2]}','2026-10-14','2026-10-14',true,now());
+        commit;` })
+      expect((await client.auth.signInWithPassword(credentials)).error).toBeNull()
+      const original = await snapshot()
+      const view = mount()
+      fireEvent.click(await screen.findByRole('button', { name: '내 휴가 설정하기' }))
+      fireEvent.click(screen.getByRole('button', { name: '기존 기록 이어 쓰기' }))
+      expect(screen.getByRole('spinbutton', { name: '연가 보유 일수' })).toHaveValue(500)
+      expect(screen.getByRole('checkbox', { name: '포상휴가 등록' })).toBeDisabled()
+      days('연가', 20); days('성과제', 5); days('포상휴가', 3)
+      submit()
+      expect(screen.queryByRole('heading', { name: '기존 기록 변경 확인' })).not.toBeInTheDocument()
+      expect((await snapshot()).leaveGrants).toEqual(original.leaveGrants)
+      fireEvent.change(screen.getByLabelText('연가 획득일'), { target: { value: '2026-09-01' } })
+      fireEvent.change(screen.getByLabelText('포상휴가 획득일'), { target: { value: '2026-08-01' } })
+      submit()
+      expect(screen.getByRole('list', { name: '변경 범위' })).toHaveTextContent('9999-01-01 → 2026-09-01')
+      expect(screen.getByRole('list', { name: '변경 범위' })).toHaveTextContent('5000-01-01 → 2026-08-01')
+      fireEvent.click(screen.getByRole('button', { name: '입력으로 돌아가기' }))
+      expect((await snapshot()).leaveGrants).toEqual(original.leaveGrants)
+      submit()
+      const realRpc = client.rpc.bind(client)
+      let lost = 0
+      const spy = vi.spyOn(client, 'rpc').mockImplementation(((name: string, args: object) => {
+        if (name === 'api_save_onboarding_plan' && lost++ < 2) return realRpc(name, args).then((result) => {
+          expect(result.data.ok).toBe(true)
+          return { ...result, data: null, error: { code: 'NETWORK_ERROR', message: 'simulated lost response' } }
+        })
+        return realRpc(name, args)
+      }) as typeof client.rpc)
+      try {
+        fireEvent.click(screen.getByRole('button', { name: '변경 내용을 확인했고 저장합니다' }))
+        expect(await screen.findByRole('alert')).toHaveTextContent('서버에 연결할 수 없습니다')
+        expect(screen.queryByRole('heading', { name: '기본 휴가 설정을 완료했어요' })).not.toBeInTheDocument()
+        fireEvent.click(screen.getByRole('button', { name: '변경 내용을 확인했고 저장합니다' }))
+        await summary()
+      } finally { spy.mockRestore() }
+      const saved = await snapshot()
+      expect(saved.leaveGrants).toHaveLength(3)
+      expect(saved.leaveUsages).toEqual(original.leaveUsages)
+      expect(saved.leaveGrants.map((g) => g.id).sort()).toEqual(ids.sort())
+      for (const old of original.leaveGrants) expect(saved.leaveGrants.find((g) => g.id === old.id)).toMatchObject({
+        reason: old.reason, memo: old.memo, createdAt: old.createdAt, revision: 2,
+      })
+      expect(saved.leaveGrants.map((g) => g.days).sort((a, b) => a - b)).toEqual([3, 5, 20])
+      expect(saved.account.onboardingCompletedAt).not.toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: '첫 휴가 계획하기' }))
+      expect(await screen.findByRole('heading', { name: '달력' })).toBeInTheDocument()
+      view.unmount(); localStorage.clear(); mount()
+      expect(await screen.findByRole('heading', { name: '홈' })).toBeInTheDocument()
+    } finally {
+      cleanup(); await client.auth.signOut()
+      expect((await admin.auth.admin.deleteUser(temporaryId)).error).toBeNull()
+    }
+  }, 30_000)
+
 })

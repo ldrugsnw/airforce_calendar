@@ -1,6 +1,6 @@
 import { isCalendarDate } from '../domain/calendarDate'
 import {
-  MAX_LEAVE_GRANT_DAYS,
+  isStoredLeaveDate,
   MAX_LEAVE_MEMO_LENGTH,
   MAX_LEAVE_REASON_LENGTH,
   isLeaveType,
@@ -35,6 +35,7 @@ export type AppServerErrorCode =
   | 'MIGRATION_SERVER_NOT_EMPTY'
   | 'MIGRATION_INVALID_VERSION'
   | 'NETWORK_ERROR'
+  | 'LEGACY_CORRECTION_REQUIRED'
   | 'CONFIRMATION_REQUIRED'
   | 'UNKNOWN_ERROR'
 
@@ -68,10 +69,9 @@ export function isAppSnapshot(value: unknown): value is AppSnapshot {
         typeof item.id === 'string' &&
         isLeaveType(item.type) &&
         typeof item.days === 'number' &&
-        Number.isInteger(item.days) &&
+        Number.isSafeInteger(item.days) &&
         item.days >= 1 &&
-        item.days <= MAX_LEAVE_GRANT_DAYS &&
-        (item.acquiredDate === null || isCalendarDate(item.acquiredDate)) &&
+        (item.acquiredDate === null || isStoredLeaveDate(item.acquiredDate)) &&
         typeof item.reason === 'string' &&
         item.reason.length <= MAX_LEAVE_REASON_LENGTH &&
         typeof item.memo === 'string' &&
@@ -117,6 +117,7 @@ const ERROR_MESSAGES: Record<AppServerErrorCode, string> = {
   MIGRATION_SERVER_NOT_EMPTY: '서버에 데이터가 있어 자동으로 합칠 수 없습니다.',
   MIGRATION_INVALID_VERSION: '이전할 로컬 데이터 형식을 확인해주세요.',
   NETWORK_ERROR: '서버에 연결할 수 없습니다. 인터넷 연결을 확인해주세요.',
+  LEGACY_CORRECTION_REQUIRED: '기존 휴가의 일수와 획득일을 올바르게 입력하고 변경 내용을 확인해주세요.',
   CONFIRMATION_REQUIRED: '기존 기록의 변경 범위를 확인하고 저장해주세요.',
   UNKNOWN_ERROR: '요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
 }
