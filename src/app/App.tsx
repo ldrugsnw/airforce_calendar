@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from 'react-router'
+import { useState } from 'react'
+import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { AuthProvider } from '../auth/AuthProvider'
 import { useAuth } from '../auth/authContext'
 import { AccountPage } from '../pages/AccountPage'
@@ -9,8 +10,13 @@ import { LeaveDetailPage } from '../pages/LeaveDetailPage'
 import { LeaveEditPage } from '../pages/LeaveEditPage'
 import { LeavePage } from '../pages/LeavePage'
 import { LoginPage } from '../pages/LoginPage'
+import { AirForceOnboardingPage } from '../pages/AirForceOnboardingPage'
 import { AppStateProvider } from '../store/AppStateProvider'
 import { useAppRuntime } from '../store/appRuntimeContext'
+import { hasValidExistingAppData, isNewLocalUser, loadOnboardingState } from '../store/appStorage'
+import { isServerMode } from '../server/supabaseClient'
+import { useAppState } from '../store/appStateContext'
+import { needsLeaveCorrection } from '../domain/leave'
 import { AppLayout } from './AppLayout'
 
 function LoadingScreen({ message = '데이터를 불러오는 중입니다…' }: { message?: string }) {
@@ -23,6 +29,15 @@ function LoadingScreen({ message = '데이터를 불러오는 중입니다…' }
 
 function AuthenticatedRoutes() {
   const runtime = useAppRuntime()
+  const state = useAppState()
+  const location = useLocation()
+  const onboarding = isServerMode ? null : loadOnboardingState()
+  const shouldShowOnboarding = isServerMode
+    ? runtime.status === 'ready' && (runtime.account?.onboardingCompletedAt === null || state.leaveGrants.some(needsLeaveCorrection))
+    : (
+      (onboarding?.branch === 'air_force' && onboarding.leaveSetupCompletedAt === null) ||
+      (!hasValidExistingAppData() && isNewLocalUser())
+    )
   if (runtime.status === 'loading') return <LoadingScreen />
   if (runtime.status === 'error') {
     return (
@@ -36,6 +51,18 @@ function AuthenticatedRoutes() {
         </section>
       </main>
     )
+  }
+  return <OnboardingGate shouldShow={shouldShowOnboarding} initialState={onboarding} locationKey={location.key} />
+}
+
+function OnboardingGate({ shouldShow, initialState, locationKey }: {
+  shouldShow: boolean; initialState: ReturnType<typeof loadOnboardingState>; locationKey: string
+}) {
+  // Mount only after loading. Retain the summary and edits until navigation.
+  const [onboardingLocationKey, setOnboardingLocationKey] = useState<string | null>(null)
+  if (shouldShow && onboardingLocationKey !== locationKey) setOnboardingLocationKey(locationKey)
+  if (shouldShow || onboardingLocationKey === locationKey) {
+    return <AirForceOnboardingPage initialState={initialState} />
   }
   return (
     <Routes>
@@ -54,11 +81,11 @@ function AuthenticatedRoutes() {
 }
 
 function AppWithAuth() {
-  const { status } = useAuth()
+  const { status, user } = useAuth()
   if (status === 'initializing') return <LoadingScreen message="로그인 상태를 확인하는 중입니다…" />
   if (status === 'unauthenticated') return <LoginPage />
   return (
-    <AppStateProvider>
+    <AppStateProvider key={user?.id ?? 'local'}>
       <AuthenticatedRoutes />
     </AppStateProvider>
   )

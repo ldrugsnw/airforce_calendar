@@ -1,10 +1,24 @@
-import { isLeaveType, type LeaveGrant } from '../domain/leave'
+import {
+  MAX_LEAVE_GRANT_DAYS,
+  MAX_LEAVE_MEMO_LENGTH,
+  MAX_LEAVE_REASON_LENGTH,
+  isLeaveType,
+  type LeaveGrant,
+} from '../domain/leave'
 import { isCalendarDate } from '../domain/calendarDate'
 import type { LeaveUsage } from '../domain/leaveUsage'
 import type { Outing } from '../domain/outing'
 import { initialAppState, type AppState } from './appReducer'
+import { CACHE_PREFIX, MIGRATION_BACKUP_PREFIX } from '../server/appCache'
 
 export const APP_STORAGE_KEY = 'airforce-calendar:data'
+export const ONBOARDING_STORAGE_KEY = 'airforce-calendar:onboarding'
+
+export type LocalOnboardingState = {
+  version: 1
+  branch: null | 'air_force'
+  leaveSetupCompletedAt: null | string
+}
 
 export type StoredAppData = {
   version: 3
@@ -20,6 +34,26 @@ type ParsedStoredAppData = {
   outings?: unknown
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isLocalOnboardingState(value: unknown): value is LocalOnboardingState {
+  if (!isRecord(value)) return false
+  const completedAt = value.leaveSetupCompletedAt
+  const hasValidCompletionDate =
+    completedAt === null ||
+    (typeof completedAt === 'string' &&
+      !Number.isNaN(Date.parse(completedAt)) &&
+      new Date(completedAt).toISOString() === completedAt)
+
+  return (
+    value.version === 1 &&
+    (value.branch === null || value.branch === 'air_force') &&
+    hasValidCompletionDate
+  )
+}
+
 function isLeaveGrant(value: unknown): value is LeaveGrant {
   if (!value || typeof value !== 'object') {
     return false
@@ -33,9 +67,12 @@ function isLeaveGrant(value: unknown): value is LeaveGrant {
     typeof leaveGrant.days === 'number' &&
     Number.isInteger(leaveGrant.days) &&
     leaveGrant.days > 0 &&
-    typeof leaveGrant.acquiredDate === 'string' &&
+    leaveGrant.days <= MAX_LEAVE_GRANT_DAYS &&
+    (leaveGrant.acquiredDate === null || isCalendarDate(leaveGrant.acquiredDate)) &&
     typeof leaveGrant.reason === 'string' &&
+    leaveGrant.reason.length <= MAX_LEAVE_REASON_LENGTH &&
     typeof leaveGrant.memo === 'string' &&
+    leaveGrant.memo.length <= MAX_LEAVE_MEMO_LENGTH &&
     typeof leaveGrant.createdAt === 'string' &&
     typeof leaveGrant.updatedAt === 'string'
   )
@@ -69,6 +106,7 @@ function isOuting(value: unknown): value is Outing {
     isCalendarDate(outing.date) &&
     typeof outing.reason === 'string' &&
     outing.reason.trim().length > 0 &&
+    outing.reason.length <= 100 &&
     typeof outing.canceled === 'boolean' &&
     (outing.canceledAt === null || typeof outing.canceledAt === 'string') &&
     typeof outing.createdAt === 'string' &&
@@ -76,68 +114,93 @@ function isOuting(value: unknown): value is Outing {
   )
 }
 
+function parseStoredAppData(value: unknown): AppState | null {
+  if (!isRecord(value)) return null
+  const storedData = value as ParsedStoredAppData
+
+  if (
+    !Array.isArray(storedData.leaveGrants) ||
+    !storedData.leaveGrants.every(isLeaveGrant)
+  ) return null
+
+  const leaveGrants = storedData.leaveGrants
+  if (storedData.version === 1) {
+    return { leaveGrants, leaveUsages: [], outings: [] }
+  }
+
+  if (
+    (storedData.version !== 2 && storedData.version !== 3) ||
+    !Array.isArray(storedData.leaveUsages) ||
+    !storedData.leaveUsages.every(isLeaveUsage)
+  ) return null
+
+  const leaveUsages = storedData.leaveUsages
+  if (
+    leaveUsages.some(
+      (usage) => !leaveGrants.some((leaveGrant) => leaveGrant.id === usage.leaveGrantId),
+    )
+  ) return null
+
+  if (storedData.version === 2) {
+    return { leaveGrants, leaveUsages, outings: [] }
+  }
+
+  if (
+    !Array.isArray(storedData.outings) ||
+    !storedData.outings.every(isOuting)
+  ) return null
+
+  return { leaveGrants, leaveUsages, outings: storedData.outings }
+}
+
 export function loadAppState(): AppState {
   try {
     const serializedData = localStorage.getItem(APP_STORAGE_KEY)
-
-    if (!serializedData) {
-      return initialAppState
-    }
-
-    const storedData = JSON.parse(serializedData) as ParsedStoredAppData
-
-    if (
-      !Array.isArray(storedData.leaveGrants) ||
-      !storedData.leaveGrants.every(isLeaveGrant)
-    ) {
-      return initialAppState
-    }
-
-    const leaveGrants = storedData.leaveGrants
-
-    if (storedData.version === 1) {
-      return { leaveGrants, leaveUsages: [], outings: [] }
-    }
-
-    if (
-      (storedData.version !== 2 && storedData.version !== 3) ||
-      !Array.isArray(storedData.leaveUsages) ||
-      !storedData.leaveUsages.every(isLeaveUsage)
-    ) {
-      return initialAppState
-    }
-
-    const leaveUsages = storedData.leaveUsages
-
-    if (
-      leaveUsages.some(
-        (usage) =>
-          !leaveGrants.some(
-            (leaveGrant) => leaveGrant.id === usage.leaveGrantId,
-          ),
-      )
-    ) {
-      return initialAppState
-    }
-
-    if (storedData.version === 2) {
-      return { leaveGrants, leaveUsages, outings: [] }
-    }
-
-    if (
-      !Array.isArray(storedData.outings) ||
-      !storedData.outings.every(isOuting)
-    ) {
-      return initialAppState
-    }
-
-    return {
-      leaveGrants,
-      leaveUsages,
-      outings: storedData.outings,
-    }
+    if (!serializedData) return initialAppState
+    return parseStoredAppData(JSON.parse(serializedData)) ?? initialAppState
   } catch {
     return initialAppState
+  }
+}
+
+export function loadOnboardingState(): LocalOnboardingState | null {
+  try {
+    const serializedData = localStorage.getItem(ONBOARDING_STORAGE_KEY)
+    if (!serializedData) return null
+    const value: unknown = JSON.parse(serializedData)
+    return isLocalOnboardingState(value) ? value : null
+  } catch {
+    return null
+  }
+}
+
+export function saveOnboardingState(state: LocalOnboardingState): boolean {
+  if (!isLocalOnboardingState(state)) return false
+  try {
+    localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(state))
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function hasValidExistingAppData(): boolean {
+  try {
+    const serializedData = localStorage.getItem(APP_STORAGE_KEY)
+    return serializedData !== null && parseStoredAppData(JSON.parse(serializedData)) !== null
+  } catch {
+    return false
+  }
+}
+
+export function isNewLocalUser(): boolean {
+  try {
+    return (
+      localStorage.getItem(APP_STORAGE_KEY) === null &&
+      localStorage.getItem(ONBOARDING_STORAGE_KEY) === null
+    )
+  } catch {
+    return false
   }
 }
 
@@ -157,8 +220,8 @@ export function getLocalDataForMigration(): StoredAppData | null {
     const raw = JSON.parse(localStorage.getItem(APP_STORAGE_KEY) ?? 'null') as
       | ParsedStoredAppData
       | null
-    if (raw?.version !== 3) return null
-    const state = loadAppState()
+    const state = parseStoredAppData(raw)
+    if (!state) return null
     if (
       state.leaveGrants.length === 0 &&
       state.leaveUsages.length === 0 &&
@@ -172,4 +235,21 @@ export function getLocalDataForMigration(): StoredAppData | null {
 
 export function clearLocalAppData() {
   localStorage.removeItem(APP_STORAGE_KEY)
+}
+
+export function resetLocalTestData(): boolean {
+  try {
+    const storage = window.localStorage
+    const keys = [APP_STORAGE_KEY, ONBOARDING_STORAGE_KEY]
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index)
+      if (key?.startsWith(CACHE_PREFIX) || key?.startsWith(MIGRATION_BACKUP_PREFIX)) {
+        keys.push(key)
+      }
+    }
+    for (const key of keys) storage.removeItem(key)
+    return true
+  } catch {
+    return false
+  }
 }

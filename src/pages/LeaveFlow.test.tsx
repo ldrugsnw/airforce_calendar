@@ -2,8 +2,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { App } from '../app/App'
 import { APP_STORAGE_KEY } from '../store/appStorage'
+import { saveAppState } from '../store/appStorage'
 
 describe('보유 휴가 등록 흐름', () => {
+  beforeEach(() => saveAppState({ leaveGrants: [], leaveUsages: [], outings: [] }))
+
   it('입력한 보유 휴가를 목록과 브라우저 저장소에 반영한다', async () => {
     render(
       <MemoryRouter initialEntries={['/leave']}>
@@ -12,10 +15,7 @@ describe('보유 휴가 등록 흐름', () => {
     )
 
     fireEvent.click(screen.getByRole('link', { name: '휴가 추가' }))
-    expect(screen.getByLabelText(/휴가 종류/)).toHaveClass(
-      'h-14',
-      'appearance-none',
-    )
+    expect(screen.getByRole('radiogroup', { name: '휴가 종류' })).toBeInTheDocument()
     expect(screen.getByLabelText(/획득 날짜/)).toHaveClass(
       'h-14',
       'min-w-0',
@@ -23,10 +23,12 @@ describe('보유 휴가 등록 흐름', () => {
       'calendar-date-input',
       'calendar-date-input-centered',
     )
-    fireEvent.change(screen.getByLabelText(/휴가 종류/), {
-      target: { value: 'consolation' },
-    })
-    fireEvent.change(screen.getByLabelText(/획득 일수/), {
+    fireEvent.click(screen.getByRole('radio', { name: '위로휴가' }))
+    expect(screen.getByRole('radio', { name: '위로휴가' }).parentElement).toHaveClass(
+      'bg-amber-300',
+      'calendar-consolation',
+    )
+    fireEvent.change(screen.getByRole('spinbutton'), {
       target: { value: '2' },
     })
     fireEvent.change(screen.getByLabelText(/획득 날짜/), {
@@ -66,9 +68,9 @@ describe('보유 휴가 등록 흐름', () => {
 
     expect(screen.getByText('휴가 종류를 선택해주세요.')).toBeInTheDocument()
     expect(
-      screen.getByText('획득 일수는 1일 이상의 정수로 입력해주세요.'),
+      screen.getByText('획득 일수는 1~365일 정수로 입력해주세요.'),
     ).toBeInTheDocument()
-    expect(screen.getByText('획득 날짜를 선택해주세요.')).toBeInTheDocument()
+    expect(screen.queryByText('획득 날짜를 선택해주세요.')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '보유 휴가 추가' })).toBeInTheDocument()
   })
 
@@ -79,11 +81,8 @@ describe('보유 휴가 등록 흐름', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('option', { name: '공가' })).toHaveValue('official')
-    fireEvent.change(screen.getByLabelText(/휴가 종류/), {
-      target: { value: 'official' },
-    })
-    fireEvent.change(screen.getByLabelText(/획득 일수/), {
+    fireEvent.click(screen.getByRole('radio', { name: '공가' }))
+    fireEvent.change(screen.getByRole('spinbutton'), {
       target: { value: '1' },
     })
     fireEvent.change(screen.getByLabelText(/획득 날짜/), {
@@ -97,6 +96,21 @@ describe('보유 휴가 등록 흐름', () => {
     await waitFor(() => {
       expect(localStorage.getItem(APP_STORAGE_KEY)).toContain('official')
     })
+  })
+
+  it('획득일 없이도 저장하고 날짜 입력은 2999년까지 허용한다', async () => {
+    render(
+      <MemoryRouter initialEntries={['/leave/new']}>
+        <App />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('radio', { name: '연가' }))
+    fireEvent.click(screen.getByRole('button', { name: '획득 일수 1일 늘리기' }))
+    expect(screen.getByLabelText(/획득 날짜/)).toHaveAttribute('max', '2999-12-31')
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    expect(await screen.findByText('획득일 미입력')).toBeInTheDocument()
   })
 
   it('작성 중인 폼을 취소할 때 입력 내용 폐기를 확인한다', async () => {

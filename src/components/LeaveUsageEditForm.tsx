@@ -1,5 +1,7 @@
 import {
   getInclusiveDayCount,
+  MAX_CALENDAR_DATE,
+  MIN_CALENDAR_DATE,
   type CalendarDate,
 } from '../domain/calendarDate'
 import { LeaveGrantSelect, type LeaveGrantOption } from './LeaveGrantSelect'
@@ -39,7 +41,8 @@ export function LeaveUsageEditForm({
           시작일
           <input
             className="calendar-date-input calendar-date-input-centered mt-2 h-14 min-w-0 w-full max-w-full rounded-2xl border border-slate-300 bg-white px-4 text-base font-normal leading-6 text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-            max={endDate ?? undefined}
+            max={endDate ?? MAX_CALENDAR_DATE}
+            min={MIN_CALENDAR_DATE}
             onChange={(event) =>
               onStartDateChange(
                 event.target.value
@@ -55,7 +58,8 @@ export function LeaveUsageEditForm({
           종료일
           <input
             className="calendar-date-input calendar-date-input-centered mt-2 h-14 min-w-0 w-full max-w-full rounded-2xl border border-slate-300 bg-white px-4 text-base font-normal leading-6 text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-            min={startDate ?? undefined}
+            max={MAX_CALENDAR_DATE}
+            min={startDate ?? MIN_CALENDAR_DATE}
             onChange={(event) =>
               onEndDateChange(
                 event.target.value ? (event.target.value as CalendarDate) : null,

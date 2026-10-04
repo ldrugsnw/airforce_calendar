@@ -1,10 +1,24 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { LEAVE_TYPES, type LeaveType } from '../domain/leave'
+import {
+  LEAVE_TYPES,
+  MAX_LEAVE_GRANT_DAYS,
+  MAX_LEAVE_MEMO_LENGTH,
+  MAX_LEAVE_REASON_LENGTH,
+  MIN_LEAVE_GRANT_DAYS,
+  validateLeaveGrantInput,
+  type LeaveType,
+} from '../domain/leave'
+import {
+  MAX_CALENDAR_DATE,
+  MIN_CALENDAR_DATE,
+  type CalendarDate,
+} from '../domain/calendarDate'
+import { LEAVE_TYPE_STYLES } from './calendarStyles'
 
 export type LeaveGrantFormValues = {
   type: LeaveType
   days: number
-  acquiredDate: string
+  acquiredDate: CalendarDate | null
   reason: string
   memo: string
 }
@@ -22,7 +36,7 @@ type FormErrors = Partial<Record<'type' | 'days' | 'acquiredDate', string>>
 const emptyValues = {
   type: '',
   days: '',
-  acquiredDate: '',
+  acquiredDate: null,
   reason: '',
   memo: '',
 }
@@ -35,6 +49,12 @@ export function LeaveGrantForm({
   validate,
 }: LeaveGrantFormProps) {
   const [errors, setErrors] = useState<FormErrors>({})
+  const [selectedType, setSelectedType] = useState<LeaveType | ''>(
+    initialValues?.type ?? '',
+  )
+  const [daysValue, setDaysValue] = useState(
+    initialValues ? String(initialValues.days) : '',
+  )
   const [isDirty, setIsDirty] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const values = initialValues ?? emptyValues
@@ -43,9 +63,11 @@ export function LeaveGrantForm({
     event.preventDefault()
 
     const formData = new FormData(event.currentTarget)
-    const type = formData.get('type')?.toString() ?? ''
-    const daysValue = formData.get('days')?.toString() ?? ''
-    const acquiredDate = formData.get('acquiredDate')?.toString() ?? ''
+    const type = selectedType
+    const acquiredDateValue = formData.get('acquiredDate')?.toString() ?? ''
+    const acquiredDate = acquiredDateValue
+      ? (acquiredDateValue as CalendarDate)
+      : null
     const days = Number(daysValue)
     const nextErrors: FormErrors = {}
 
@@ -53,12 +75,12 @@ export function LeaveGrantForm({
       nextErrors.type = '휴가 종류를 선택해주세요.'
     }
 
-    if (!Number.isInteger(days) || days < 1) {
-      nextErrors.days = '획득 일수는 1일 이상의 정수로 입력해주세요.'
-    }
-
-    if (!acquiredDate) {
-      nextErrors.acquiredDate = '획득 날짜를 선택해주세요.'
+    if (
+      !Number.isInteger(days) ||
+      days < MIN_LEAVE_GRANT_DAYS ||
+      days > MAX_LEAVE_GRANT_DAYS
+    ) {
+      nextErrors.days = `획득 일수는 ${MIN_LEAVE_GRANT_DAYS}~${MAX_LEAVE_GRANT_DAYS}일 정수로 입력해주세요.`
     }
 
     if (Object.keys(nextErrors).length > 0) {
@@ -66,14 +88,15 @@ export function LeaveGrantForm({
       return
     }
 
-    const submittedValues = {
+    const submittedValues: LeaveGrantFormValues = {
       type: type as LeaveType,
       days,
       acquiredDate,
       reason: formData.get('reason')?.toString().trim() ?? '',
       memo: formData.get('memo')?.toString().trim() ?? '',
     }
-    const validationMessage = validate?.(submittedValues) ?? null
+    const validationMessage =
+      validateLeaveGrantInput(submittedValues) ?? validate?.(submittedValues) ?? null
 
     if (validationMessage) {
       setSubmitError(validationMessage)
@@ -95,6 +118,21 @@ export function LeaveGrantForm({
     onCancel()
   }
 
+  function changeDaysBy(delta: number) {
+    setDaysValue((current) => {
+      const fallback = delta > 0 ? 0 : MIN_LEAVE_GRANT_DAYS
+      return String(
+        Math.min(
+          MAX_LEAVE_GRANT_DAYS,
+          Math.max(MIN_LEAVE_GRANT_DAYS, (Number(current) || fallback) + delta),
+        ),
+      )
+    })
+    setErrors((current) => ({ ...current, days: undefined }))
+    setIsDirty(true)
+    setSubmitError(null)
+  }
+
   return (
     <form
       className="mt-8 space-y-6"
@@ -105,51 +143,93 @@ export function LeaveGrantForm({
       }}
       onSubmit={handleSubmit}
     >
-      <Field label="휴가 종류" required error={errors.type}>
-        <div className="relative min-w-0 w-full">
-          <select
-            aria-invalid={Boolean(errors.type)}
-            className={`${inputClassName(Boolean(errors.type))} appearance-none pr-12`}
-            defaultValue={values.type}
-            name="type"
-          >
-            <option disabled value="">
-              휴가 종류 선택
-            </option>
-            {LEAVE_TYPES.map((leaveType) => (
-              <option key={leaveType.value} value={leaveType.value}>
-                {leaveType.label}
-              </option>
-            ))}
-          </select>
-          <SelectChevron />
+      <fieldset>
+        <legend className="text-sm font-semibold text-slate-800">
+          휴가 종류 <span className="text-red-500">*</span>
+        </legend>
+        <div
+          aria-invalid={Boolean(errors.type)}
+          aria-label="휴가 종류"
+          className="mt-2 grid grid-cols-2 gap-2"
+          role="radiogroup"
+        >
+          {LEAVE_TYPES.map((leaveType) => (
+            <label
+              className={`flex min-h-12 cursor-pointer items-center justify-center rounded-xl border px-3 text-sm font-semibold transition ${
+                selectedType === leaveType.value
+                  ? `border-transparent ring-2 ring-slate-300 ring-offset-1 ${LEAVE_TYPE_STYLES[leaveType.value]}`
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+              }`}
+              key={leaveType.value}
+            >
+              <input
+                checked={selectedType === leaveType.value}
+                className="sr-only"
+                name="type"
+                onChange={() => {
+                  setSelectedType(leaveType.value)
+                  setErrors((current) => ({ ...current, type: undefined }))
+                }}
+                type="radio"
+                value={leaveType.value}
+              />
+              {leaveType.label}
+            </label>
+          ))}
         </div>
-      </Field>
+        {errors.type && (
+          <p className="mt-2 text-sm text-red-600" role="alert">
+            {errors.type}
+          </p>
+        )}
+      </fieldset>
 
       <Field label="획득 일수" required error={errors.days}>
-        <div className="relative">
-          <input
-            aria-invalid={Boolean(errors.days)}
-            className={`${inputClassName(Boolean(errors.days))} pr-12`}
-            defaultValue={values.days}
-            inputMode="numeric"
-            min="1"
-            name="days"
-            placeholder="예: 3"
-            step="1"
-            type="number"
-          />
-          <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-slate-500">
-            일
-          </span>
+        <div className="grid grid-cols-[3.5rem_1fr_3.5rem] gap-2">
+          <button
+            aria-label="획득 일수 1일 줄이기"
+            className="rounded-xl border border-slate-300 bg-white text-xl font-bold text-slate-700"
+            onClick={() => changeDaysBy(-1)}
+            type="button"
+          >
+            −
+          </button>
+          <div className="relative">
+            <input
+              aria-invalid={Boolean(errors.days)}
+              className={`${inputClassName(Boolean(errors.days))} pr-12`}
+              max={MAX_LEAVE_GRANT_DAYS}
+              inputMode="numeric"
+              min={MIN_LEAVE_GRANT_DAYS}
+              name="days"
+              onChange={(event) => setDaysValue(event.target.value)}
+              placeholder="예: 3"
+              step="1"
+              type="number"
+              value={daysValue}
+            />
+            <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-slate-500">
+              일
+            </span>
+          </div>
+          <button
+            aria-label="획득 일수 1일 늘리기"
+            className="rounded-xl border border-slate-300 bg-white text-xl font-bold text-slate-700"
+            onClick={() => changeDaysBy(1)}
+            type="button"
+          >
+            +
+          </button>
         </div>
       </Field>
 
-      <Field label="획득 날짜" required error={errors.acquiredDate}>
+      <Field label="획득 날짜" hint="선택" error={errors.acquiredDate}>
         <input
           aria-invalid={Boolean(errors.acquiredDate)}
           className={`${inputClassName(Boolean(errors.acquiredDate))} calendar-date-input calendar-date-input-centered`}
-          defaultValue={values.acquiredDate}
+          defaultValue={values.acquiredDate ?? ''}
+          max={MAX_CALENDAR_DATE}
+          min={MIN_CALENDAR_DATE}
           name="acquiredDate"
           type="date"
         />
@@ -159,6 +239,7 @@ export function LeaveGrantForm({
         <input
           className={inputClassName(false)}
           defaultValue={values.reason}
+          maxLength={MAX_LEAVE_REASON_LENGTH}
           name="reason"
           placeholder="예: 주 40시간 근무"
           type="text"
@@ -169,6 +250,7 @@ export function LeaveGrantForm({
         <textarea
           className={`${inputClassName(false)} min-h-28 resize-y py-3`}
           defaultValue={values.memo}
+          maxLength={MAX_LEAVE_MEMO_LENGTH}
           name="memo"
           placeholder="추가로 기억할 내용을 입력하세요."
         />
@@ -199,25 +281,6 @@ export function LeaveGrantForm({
         </button>
       </div>
     </form>
-  )
-}
-
-function SelectChevron() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-slate-500"
-      fill="none"
-      viewBox="0 0 20 20"
-    >
-      <path
-        d="m6 8 4 4 4-4"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.75"
-      />
-    </svg>
   )
 }
 

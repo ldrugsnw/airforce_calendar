@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap;
-select plan(9);
+select plan(13);
 
 select has_table('public', 'leave_grants', 'leave_grants table exists');
 select has_table('public', 'mutation_requests', 'mutation request table exists');
@@ -17,7 +17,8 @@ insert into auth.users(
    '{"provider":"email","providers":["email"]}', '{}', now(), now());
 
 select is(
-  (select count(*)::integer from public.user_accounts),
+  (select count(*)::integer from public.user_accounts
+    where user_id in ('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002')),
   2,
   'auth trigger creates app accounts without an allowlist'
 );
@@ -73,6 +74,46 @@ select is(
   )->>'code',
   'REVISION_CONFLICT',
   'server rejects stale revisions'
+);
+
+select is(
+  (public.api_mutate_app(
+    'aaaaaaaa-0000-0000-0000-000000000005',
+    'leaveGrant/create',
+    '{"id":"aaaaaaaa-4444-4444-4444-444444444444","type":"annual","days":1,"acquiredDate":"2999-12-31","reason":"future","memo":""}'
+  )->>'ok')::boolean,
+  true,
+  'server accepts a future acquired date through 2999'
+);
+
+select is(
+  (public.api_mutate_app(
+    'aaaaaaaa-0000-0000-0000-000000000006',
+    'leaveGrant/create',
+    '{"id":"aaaaaaaa-5555-5555-5555-555555555555","type":"annual","days":1,"acquiredDate":null,"reason":"optional","memo":""}'
+  )->>'ok')::boolean,
+  true,
+  'server accepts a missing acquired date'
+);
+
+select is(
+  (public.api_mutate_app(
+    'aaaaaaaa-0000-0000-0000-000000000007',
+    'leaveGrant/create',
+    '{"id":"aaaaaaaa-6666-6666-6666-666666666666","type":"annual","days":366,"acquiredDate":"2026-08-01","reason":"too many","memo":""}'
+  )->>'ok')::boolean,
+  false,
+  'server rejects more than 365 acquired days'
+);
+
+select is(
+  (public.api_mutate_app(
+    'aaaaaaaa-0000-0000-0000-000000000008',
+    'leaveGrant/create',
+    '{"id":"aaaaaaaa-7777-7777-7777-777777777777","type":"annual","days":1,"acquiredDate":"3000-01-01","reason":"too late","memo":""}'
+  )->>'ok')::boolean,
+  false,
+  'server rejects dates after 2999'
 );
 
 reset role;

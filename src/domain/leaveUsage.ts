@@ -2,6 +2,7 @@ import {
   addCalendarDays,
   getCalendarDayDifference,
   getInclusiveDayCount,
+  isCalendarDate,
   type CalendarDate,
 } from './calendarDate'
 import type { LeaveGrant, LeaveType } from './leave'
@@ -47,6 +48,7 @@ export type LeaveUsageValidation =
   | {
       valid: false
       reason:
+        | 'invalidDate'
         | 'leaveGrantNotFound'
         | 'insufficientDays'
         | 'overlap'
@@ -232,6 +234,18 @@ export function validateLeaveUsage(
     (leaveUsage) => leaveUsage.id !== excludedUsageId,
   )
   const leaveGrant = leaveGrants.find((grant) => grant.id === input.leaveGrantId)
+
+  if (
+    !isCalendarDate(input.startDate) ||
+    !isCalendarDate(input.endDate) ||
+    input.endDate < input.startDate
+  ) {
+    return {
+      valid: false,
+      reason: 'invalidDate',
+      message: '휴가 날짜는 2000년부터 2999년 사이로 선택해주세요.',
+    }
+  }
 
   if (!leaveGrant) {
     return {
